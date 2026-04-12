@@ -26,12 +26,15 @@ def calculate():
     t_water = float(data.get('t_water', 40.0))
     spacing = float(data.get('spacing', 0.15))
     r_cover = float(data.get('r_cover', 0.05))
+    t_below = float(data.get('t_below', 15.0))           # YENİ: Alt kat sıcaklığı
+    r_insulation = float(data.get('r_insulation', 0.85)) # YENİ: Alt yalıtım direnci
 
-    # MATLAB fonksiyonunu çağır
-    # thermal_solver(T_room, T_water, spacing, R_cover)
-    # MATLAB'dan dönen veriler: [q_flux, t_surface, x_array, ripple_array]
+    # MATLAB fonksiyonunu çağır 
+    # nargout=6 ile hem odayı hem aşağıyı ilgilendiren tüm verileri alıyoruz
     try:
-        q_flux, t_surf, x_vals, t_ripple = eng.floor_heating_model(t_room, t_water, spacing, r_cover, nargout=4)
+        q_flux, t_surf, x_vals, t_ripple, q_down, q_total = eng.floor_heating_model(
+            t_room, t_water, spacing, r_cover, t_below, r_insulation, nargout=6
+        )
         
         # MATLAB listelerini Python listelerine çevir
         x_vals_list = [x[0] for x in x_vals]
@@ -42,7 +45,9 @@ def calculate():
             "q_flux": q_flux,
             "t_surface": t_surf,
             "x_vals": x_vals_list,
-            "t_ripple": t_ripple_list
+            "t_ripple": t_ripple_list,
+            "q_down": q_down,
+            "q_total": q_total
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

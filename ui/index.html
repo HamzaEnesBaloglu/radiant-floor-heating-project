@@ -21,7 +21,7 @@
         input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.3s; }
         button:hover { background: #004494; }
-        .result-box { display: flex; justify-content: space-between; background: #eef2f5; padding: 15px; border-radius: 6px; font-weight: bold; }
+        .result-box { display: flex; justify-content: space-between; background: #eef2f5; padding: 15px; border-radius: 6px; font-weight: bold; align-items: center; }
         .result-val { color: var(--primary); font-size: 18px; }
         .log-box { font-family: monospace; background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 6px; height: 100px; overflow-y: auto; font-size: 12px; }
     </style>
@@ -30,7 +30,7 @@
 
     <div class="header">
         <h1>Radiant Floor Thermal Solver</h1>
-        <p>1D Steady-State Heat Conduction & Fin Efficiency Model (Based on Kılkış Algorithm)</p>
+        <p>1D Steady-State Heat Conduction & Fin Efficiency Model</p>
     </div>
 
     <div class="container">
@@ -56,19 +56,41 @@
                     <option value="0.25">Halı Kaplama (R ~ 0.25)</option>
                 </select>
             </div>
+            
+            <div class="input-group">
+                <label>Alt Kat Sıcaklığı (°C)</label>
+                <input type="number" id="t_below" value="15" step="1">
+            </div>
+            <div class="input-group">
+                <label>Alt Yalıtım Direnci (R Değeri)</label>
+                <input type="number" id="r_insulation" value="0.85" step="0.05">
+            </div>
+
             <button onclick="runSimulation()">Sistemi Analiz Et (MATLAB)</button>
         </div>
 
         <div class="panel results">
             <h3>Termodinamik Çözüm Özeti</h3>
-            <div style="display: flex; gap: 15px;">
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                 <div class="result-box" style="flex: 1;">
                     <span>Yüzey Sıcaklığı (Ts):</span>
                     <span class="result-val" id="res_ts">-- °C</span>
                 </div>
                 <div class="result-box" style="flex: 1;">
-                    <span>Isı Akısı (q):</span>
+                    <span>Odaya Giden Isı (q_up):</span>
                     <span class="result-val" id="res_q">-- W/m²</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <div class="result-box" style="flex: 1; background: #ffebee;">
+                    <span>Aşağı Kaçan Isı (q_down):</span>
+                    <span class="result-val" style="color: #c62828;" id="res_qdown">-- W/m²</span>
+                </div>
+                <div class="result-box" style="flex: 1; background: #e8f5e9;">
+                    <span>Kazanın Toplam Yükü:</span>
+                    <span class="result-val" style="color: #2e7d32;" id="res_qtotal">-- W/m²</span>
                 </div>
             </div>
 
@@ -89,12 +111,14 @@
             const logBox = document.getElementById('solver_log');
             logBox.innerHTML += "<br>> MATLAB motoruna veri gönderiliyor...";
             
-            // Girdileri topla
+            // Girdileri topla (YENİ VERİLER BURAYA EKLENDİ)
             const data = {
                 t_room: parseFloat(document.getElementById('t_room').value),
                 t_water: parseFloat(document.getElementById('t_water').value),
                 spacing: parseFloat(document.getElementById('spacing').value),
-                r_cover: parseFloat(document.getElementById('r_cover').value)
+                r_cover: parseFloat(document.getElementById('r_cover').value),
+                t_below: parseFloat(document.getElementById('t_below').value),
+                r_insulation: parseFloat(document.getElementById('r_insulation').value)
             };
 
             try {
@@ -110,7 +134,13 @@
                 // Sonuçları Ekrana Yazdır
                 document.getElementById('res_ts').innerText = result.t_surface.toFixed(2) + " °C";
                 document.getElementById('res_q').innerText = result.q_flux.toFixed(2) + " W/m²";
-                logBox.innerHTML += `<br>> Çözüm başarılı. Isı akısı hesaplandı: ${result.q_flux.toFixed(2)} W/m²`;
+                
+                // Aşağı kaçan ve Toplam yükü ekrana bas
+                document.getElementById('res_qdown').innerText = result.q_down.toFixed(2) + " W/m²";
+                document.getElementById('res_qtotal').innerText = result.q_total.toFixed(2) + " W/m²";
+
+                // Günlüğe (Log) daha detaylı bilgi yazdıralım
+                logBox.innerHTML += `<br>> Çözüm başarılı. Odaya: ${result.q_flux.toFixed(2)} W/m² | Kaçak: ${result.q_down.toFixed(2)} W/m² | Toplam Yük: ${result.q_total.toFixed(2)} W/m²`;
                 logBox.scrollTop = logBox.scrollHeight;
 
                 // Grafiği Çiz (Ripple)
@@ -138,15 +168,15 @@
                     }]
                 },
                 options: {
-    responsive: true,
-    scales: {
-        y: {
-            // Kamera sadece dalganın minimum ve maksimum noktalarına odaklansın
-            min: Math.min(...dataPoints) - 0.5,
-            max: Math.max(...dataPoints) + 0.5
-        }
-    }
-}
+                    responsive: true,
+                    scales: {
+                        y: {
+                            // Kamera sadece dalganın minimum ve maksimum noktalarına odaklansın
+                            min: Math.min(...dataPoints) - 0.5,
+                            max: Math.max(...dataPoints) + 0.5
+                        }
+                    }
+                }
             });
         }
     </script>
