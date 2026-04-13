@@ -19,38 +19,60 @@ except Exception as e:
 def calculate():
     data = request.json
     
-    # HTML'den gelen verileri al (room_area eklendi)
-    room_area = float(data.get('room_area', 20.0))
-    t_room = float(data.get('t_room', 20.0))
+    # Global Sistem Verileri
     t_water = float(data.get('t_water', 40.0))
-    spacing = float(data.get('spacing', 0.15))
-    r_cover = float(data.get('r_cover', 0.05))
     t_below = float(data.get('t_below', 15.0))
     r_insulation = float(data.get('r_insulation', 0.85))
+    dist_main = float(data.get('dist_main', 5.0))
+    d_out_main = float(data.get('d_out_main', 0.025))
+    
+    # ECO Parametreleri (Yeni)
+    cop = float(data.get('cop', 3.5))
+    hours = float(data.get('hours', 2000.0))
+    co2_factor = float(data.get('co2_factor', 0.4))
+
+    rooms = data.get('rooms', [])
+    if not rooms:
+        return jsonify({"status": "error", "message": "En az bir oda eklemelisiniz."}), 400
+
+    t_room_list = [float(r['t_room']) for r in rooms]
+    spacing_list = [float(r['spacing']) for r in rooms]
+    r_cover_list = [float(r['r_cover']) for r in rooms]
+    area_list = [float(r['room_area']) for r in rooms]
+    dist_list = [float(r['dist_to_collector']) for r in rooms]
 
     try:
-        # MATLAB fonksiyonuna room_area parametresini de gönderiyoruz
-        q_flux, t_surf, x_vals, t_ripple, q_down, q_total, pipe_length, pressure_drop = eng.floor_heating_model(
-            t_room, t_water, spacing, r_cover, t_below, r_insulation, room_area, nargout=8
+        # nargout=14 oldu, tüm eko metrikler çekiliyor
+        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_arr, room_energy_arr, room_co2_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2 = eng.floor_heating_model(
+            t_water, t_below, r_insulation, dist_main, d_out_main, cop, hours, co2_factor,
+            matlab.double(t_room_list), matlab.double(spacing_list),
+            matlab.double(r_cover_list), matlab.double(area_list), matlab.double(dist_list),
+            nargout=14
         )
         
-        x_vals_list = [x[0] for x in x_vals]
-        t_ripple_list = [t[0] for t in t_ripple]
+        def to_list(matlab_val):
+            if isinstance(matlab_val, float): return [matlab_val]
+            return list(matlab_val[0])
 
         return jsonify({
             "status": "success",
-            "q_flux": q_flux,
-            "t_surface": t_surf,
-            "x_vals": x_vals_list,
-            "t_ripple": t_ripple_list,
-            "q_down": q_down,
-            "q_total": q_total,
-            "pipe_length": pipe_length,
-            "pressure_drop": pressure_drop
+            "q_flux": to_list(q_flux_arr),
+            "t_surf": to_list(t_surf_arr),
+            "q_down": to_list(q_down_arr),
+            "q_total": to_list(q_total_arr),
+            "pipe_len": to_list(pipe_len_arr),
+            "p_drop": to_list(p_drop_arr),
+            "room_energy": to_list(room_energy_arr),
+            "room_co2": to_list(room_co2_arr),
+            "sys_total_heat": sys_total_heat,
+            "sys_max_pressure": sys_max_pressure,
+            "main_p_drop": main_p_drop,
+            "sys_pump_power": sys_pump_power,
+            "sys_total_energy": sys_total_energy,
+            "sys_total_co2": sys_total_co2
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Flask Sunucusu http://127.0.0.1:5000 adresinde çalışıyor.")
     app.run(debug=True, port=5000)
