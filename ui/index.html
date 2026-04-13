@@ -36,6 +36,12 @@
     <div class="container">
         <div class="panel inputs">
             <h3>Sistem Parametreleri</h3>
+            
+            <div class="input-group">
+                <label>Oda Alanı (m²)</label>
+                <input type="number" id="room_area" value="20" step="1">
+            </div>
+
             <div class="input-group">
                 <label>Oda Sıcaklığı (°C)</label>
                 <input type="number" id="t_room" value="20" step="0.1">
@@ -83,7 +89,7 @@
                 </div>
             </div>
             
-            <div style="display: flex; gap: 15px;">
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                 <div class="result-box" style="flex: 1; background: #ffebee;">
                     <span>Aşağı Kaçan Isı (q_down):</span>
                     <span class="result-val" style="color: #c62828;" id="res_qdown">-- W/m²</span>
@@ -91,6 +97,17 @@
                 <div class="result-box" style="flex: 1; background: #e8f5e9;">
                     <span>Kazanın Toplam Yükü:</span>
                     <span class="result-val" style="color: #2e7d32;" id="res_qtotal">-- W/m²</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <div class="result-box" style="flex: 1; background: #e3f2fd;">
+                    <span>Toplam Boru Metrajı:</span>
+                    <span class="result-val" style="color: #1565c0;" id="res_length">-- m</span>
+                </div>
+                <div class="result-box" style="flex: 1; background: #fff3e0;">
+                    <span>Basınç Kaybı (ΔP):</span>
+                    <span class="result-val" style="color: #e65100;" id="res_pressure">-- kPa</span>
                 </div>
             </div>
 
@@ -111,8 +128,8 @@
             const logBox = document.getElementById('solver_log');
             logBox.innerHTML += "<br>> MATLAB motoruna veri gönderiliyor...";
             
-            // Girdileri topla (YENİ VERİLER BURAYA EKLENDİ)
             const data = {
+                room_area: parseFloat(document.getElementById('room_area').value),
                 t_room: parseFloat(document.getElementById('t_room').value),
                 t_water: parseFloat(document.getElementById('t_water').value),
                 spacing: parseFloat(document.getElementById('spacing').value),
@@ -122,7 +139,6 @@
             };
 
             try {
-                // Python API'sine gönder
                 const response = await fetch('http://127.0.0.1:5000/api/calculate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -131,19 +147,18 @@
 
                 const result = await response.json();
 
-                // Sonuçları Ekrana Yazdır
                 document.getElementById('res_ts').innerText = result.t_surface.toFixed(2) + " °C";
                 document.getElementById('res_q').innerText = result.q_flux.toFixed(2) + " W/m²";
                 
-                // Aşağı kaçan ve Toplam yükü ekrana bas
                 document.getElementById('res_qdown').innerText = result.q_down.toFixed(2) + " W/m²";
                 document.getElementById('res_qtotal').innerText = result.q_total.toFixed(2) + " W/m²";
 
-                // Günlüğe (Log) daha detaylı bilgi yazdıralım
-                logBox.innerHTML += `<br>> Çözüm başarılı. Odaya: ${result.q_flux.toFixed(2)} W/m² | Kaçak: ${result.q_down.toFixed(2)} W/m² | Toplam Yük: ${result.q_total.toFixed(2)} W/m²`;
+                document.getElementById('res_length').innerText = result.pipe_length.toFixed(1) + " m";
+                document.getElementById('res_pressure').innerText = result.pressure_drop.toFixed(2) + " kPa";
+
+                logBox.innerHTML += `<br>> Çözüm başarılı. Alan: ${data.room_area} m² | Boru: ${result.pipe_length.toFixed(1)} m | ΔP: ${result.pressure_drop.toFixed(2)} kPa`;
                 logBox.scrollTop = logBox.scrollHeight;
 
-                // Grafiği Çiz (Ripple)
                 drawChart(result.x_vals, result.t_ripple);
 
             } catch (error) {
@@ -171,7 +186,6 @@
                     responsive: true,
                     scales: {
                         y: {
-                            // Kamera sadece dalganın minimum ve maksimum noktalarına odaklansın
                             min: Math.min(...dataPoints) - 0.5,
                             max: Math.max(...dataPoints) + 0.5
                         }
