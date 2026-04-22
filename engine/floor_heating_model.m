@@ -1,16 +1,18 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ARCHITECTURAL SOLVER (V0.8.0)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
+    % MULTI-ZONE HYDRAULIC, ECO & SHOP DRAWING SOLVER (V0.9.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
     t_surf_arr = zeros(1, num_rooms);
     q_down_arr = zeros(1, num_rooms);
     q_total_arr = zeros(1, num_rooms);
-    pipe_len_arr = zeros(1, num_rooms);
+    len_per_zone_arr = zeros(1, num_rooms);
     p_drop_arr = zeros(1, num_rooms);
     room_energy_arr = zeros(1, num_rooms);
     room_co2_arr = zeros(1, num_rooms);
     q_loss_arr = zeros(1, num_rooms);
+    num_zones_arr = zeros(1, num_rooms);
+    flow_lpm_arr = zeros(1, num_rooms);
 
     h_conv_rad = 10.8; k_concrete = 1.4; t_concrete = 0.05;
     r_concrete = t_concrete / k_concrete; 
@@ -22,6 +24,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
 
     sys_total_heat = 0; 
     total_vol_flow = 0; 
+    max_loop_length = 100; % YENİ: Tek hat için maksimum boru limiti (Metre)
 
     for i = 1:num_rooms
         t_room = t_room_arr(i);
@@ -29,7 +32,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         r_cover = r_cover_arr(i);
         room_area = area_arr(i);
         dist_to_coll = dist_arr(i); 
-        t_below = t_below_arr(i); % YENİ: Her odanın kendi zemin şartı
+        t_below = t_below_arr(i); 
 
         % ISI KAYBI HESABI
         ext_wall_len = ext_wall_len_arr(i);
@@ -40,7 +43,6 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
 
         a_wall_gross = ext_wall_len * room_height;
         a_wall_net = max(0, a_wall_gross - window_area);
-        
         q_loss = (a_wall_net * u_wall * wind_factor + window_area * u_window * wind_factor) * (t_room - t_out);
         q_loss_arr(i) = max(0, q_loss); 
 
@@ -55,29 +57,39 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         q_flux = ((t_water - t_room) / r_total) * fin_efficiency;
         q_flux_arr(i) = q_flux;
         t_surf_arr(i) = t_room + (q_flux / h_conv_rad);
-        q_down = (t_water - t_below) / r_insulation; % Aşağı kaçan ısı dinamikleşti!
+        q_down = (t_water - t_below) / r_insulation; 
         q_down_arr(i) = q_down;
         q_total = q_flux + q_down; 
         q_total_arr(i) = q_total;
 
-        total_pipe_length = (room_area / spacing) + (2 * dist_to_coll);
-        pipe_len_arr(i) = total_pipe_length;
-
         total_heat_watt = q_total * room_area;
         sys_total_heat = sys_total_heat + total_heat_watt;
         
+        % YENİ: ZONLAMA VE ŞANTİYE ALGORİTMASI
+        total_pipe_length = (room_area / spacing) + (2 * dist_to_coll);
+        num_zones = ceil(total_pipe_length / max_loop_length); % Boruyu 100m'lik parçalara böl
+        num_zones_arr(i) = num_zones;
+        
+        len_per_zone = total_pipe_length / num_zones; % Her zonun metrajı
+        len_per_zone_arr(i) = len_per_zone;
+
+        % DEBİ (Akışkanlar Mekaniği)
         mass_flow = total_heat_watt / (cp * delta_T_water); 
         vol_flow = mass_flow / rho; 
-        total_vol_flow = total_vol_flow + vol_flow; 
+        total_vol_flow = total_vol_flow + vol_flow; % Evin toplam debisine ekle
         
-        velocity = vol_flow / cross_area_room;
+        vol_flow_per_zone = vol_flow / num_zones; % Suyu paralel zonlara paylaştır
+        flow_lpm_arr(i) = vol_flow_per_zone * 60000; % Şantiye ayarı: m3/s -> Litre/Dakika (L/min)
+        
+        % DİNAMİK BASINÇ (Bölünmüş Zona Göre)
+        velocity = vol_flow_per_zone / cross_area_room;
         Re = (rho * velocity * d_in_room) / mu;
         if Re < 2300
             f = 64 / max(Re, 1e-5);
         else
             f = 0.3164 / (Re^0.25);
         end
-        delta_p_pascal = f * (total_pipe_length / d_in_room) * (rho * velocity^2) / 2;
+        delta_p_pascal = f * (len_per_zone / d_in_room) * (rho * velocity^2) / 2;
         p_drop_arr(i) = delta_p_pascal / 1000; 
 
         % ECO-METRİKLER 
@@ -103,7 +115,6 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
     main_p_drop = main_p_pascal / 1000; 
 
     sys_max_pressure = max(p_drop_arr) + main_p_drop;
-
     sys_max_pressure_pa = sys_max_pressure * 1000;
     sys_pump_power = (total_vol_flow * sys_max_pressure_pa) / 0.6; 
     

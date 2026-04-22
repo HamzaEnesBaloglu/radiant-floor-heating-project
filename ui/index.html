@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-width=1.0">
     <title>Global Radiant Floor Solver</title>
     <style>
-        :root { --bg: #f4f7f9; --panel: #ffffff; --primary: #0056b3; --text: #333; --border: #e1e4e8; --success: #2e7d32; --eco: #4caf50; --danger: #d32f2f; --warning: #ff9800;}
+        :root { --bg: #f4f7f9; --panel: #ffffff; --primary: #0056b3; --text: #333; --border: #e1e4e8; --success: #2e7d32; --eco: #4caf50; --danger: #d32f2f; --warning: #ff9800; --info: #0288d1;}
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary); margin: 0; font-weight: 600; font-size: 28px; }
@@ -30,7 +30,7 @@
         button.add-btn { background: white; color: var(--primary); border: 2px dashed var(--primary); width: 100%; padding: 10px; cursor: pointer; border-radius: 4px; font-weight: bold; margin-bottom: 15px;}
         
         .summary-dashboard { display: flex; gap: 15px; background: #1e1e1e; color: white; padding: 20px; border-radius: 8px; flex-wrap: wrap;}
-        .dash-box { flex: 1; min-width: 120px; text-align: center; }
+        .dash-box { flex: 1; min-width: 100px; text-align: center; }
         .dash-title { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;}
         .dash-val { font-size: 24px; font-weight: bold; color: #4fc3f7; margin-top: 5px;}
         .dash-val.eco { color: #81c784; }
@@ -45,8 +45,8 @@
 <body>
 
     <div class="header">
-        <h1>Global Radiant Floor Solver</h1>
-        <p>Mimari Yapı, Makroklima ve Hidrolik Simülasyon Ağı (v0.8.1)</p>
+        <h1>Radiant Floor Solver | MEP Application</h1>
+        <p>Mimari Yapı, Şantiye Zonlama ve Hidrolik Simülasyon Ağı (v0.9.0)</p>
     </div>
 
     <div class="container">
@@ -90,7 +90,7 @@
                     </div>
                     <div class="input-group" id="global_t_below_group">
                         <label>Tüm Odalar İçin Alt Kat Sıc. (°C)</label>
-                        <input type="number" id="sys_t_below_global" value="20" step="1" title="Örn: Alt komşu varsa 20, ısıtılmayan dükkansa 10 yazın">
+                        <input type="number" id="sys_t_below_global" value="20" step="1">
                     </div>
                 </div>
             </div>
@@ -126,11 +126,15 @@
         </div>
 
         <div class="panel results">
-            <h3>Tüm Ev (Global) Özeti <span style="font-size: 12px; color:var(--eco);">🌍 Green Deal Dashboard</span></h3>
+            <h3>Tüm Ev Özeti <span style="font-size: 12px; color:var(--info);">🛠️ Şantiye Dashboard</span></h3>
             <div class="summary-dashboard">
                 <div class="dash-box">
-                    <div class="dash-title" style="color: #ccc; cursor: help;" title="Sistemin test edildiği en kötü kış senaryosu (Tasarım Sıcaklığı)">Hesaplanan Dış Sıc. ℹ️</div>
+                    <div class="dash-title" style="color: #ccc;" title="Tasarım Sıcaklığı">Dış Sıc. ℹ️</div>
                     <div class="dash-val" id="res_t_out" style="color: #fff;">-- °C</div>
+                </div>
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
+                    <div class="dash-title" title="Toplam Kollektör Port İhtiyacı">Kollektör</div>
+                    <div class="dash-val" id="res_manifold" style="color: #64b5f6;">-- Ağız</div>
                 </div>
                 <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
                     <div class="dash-title">Pompa Gücü</div>
@@ -141,12 +145,12 @@
                     <div class="dash-val eco" id="res_sys_energy">-- kWh</div>
                 </div>
                 <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
-                    <div class="dash-title">Karbon Ayak İzi</div>
-                    <div class="dash-val eco" id="res_sys_co2" style="color: #f44336;">-- kg CO₂</div>
+                    <div class="dash-title">Karbon İzi</div>
+                    <div class="dash-val eco" id="res_sys_co2" style="color: #f44336;">-- kg</div>
                 </div>
             </div>
 
-            <h3>Oda Oda (Lokal) Teşhis Raporu</h3>
+            <h3>Oda Oda (Lokal) Tesisat Raporu</h3>
             <div id="results-container">
                 <p style="color: #666; font-size: 14px;">Şantiye verileri bekleniyor...</p>
             </div>
@@ -156,14 +160,12 @@
     <script>
         let roomCount = 0;
         
-        // Sayfa açıldığında varsayılan odaları ekle ve menüleri ayarla
         window.onload = () => { 
-            addRoom("Salon", 25, 4); 
+            addRoom("Büyük Salon", 45, 4); 
             addRoom("Yatak Odası", 15, 12); 
-            toggleBuildingType(); // İlk açılışta apartman seçili olduğu için ona göre gizle
+            toggleBuildingType(); 
         };
 
-        // AKILLI MENÜ GİZLEME/GÖSTERME FONKSİYONU
         function toggleBuildingType() {
             const bldType = document.getElementById('sys_bld_type').value;
             const globalTBelowGroup = document.getElementById('global_t_below_group');
@@ -171,11 +173,9 @@
 
             if (bldType === 'apartment') {
                 globalTBelowGroup.style.display = 'block';
-                // Odalardaki spesifik zemin menülerini gizle
                 roomFloorSelects.forEach(el => el.style.display = 'none');
             } else {
                 globalTBelowGroup.style.display = 'none';
-                // Odalardaki spesifik zemin menülerini göster
                 roomFloorSelects.forEach(el => el.style.display = 'block');
             }
         }
@@ -183,8 +183,6 @@
         function addRoom(defaultName = "", defaultArea = 20, defaultDist = 5) {
             roomCount++;
             const container = document.getElementById('room-container');
-            
-            // Şu anki bina tipine göre eklenecek odanın zemin menüsünün görünürlüğünü belirle
             const bldType = document.getElementById('sys_bld_type').value;
             const displayStyle = (bldType === 'apartment') ? 'display: none;' : 'display: block;';
 
@@ -270,17 +268,13 @@
 
             const roomCards = document.querySelectorAll('.room-card');
             const roomNames = [];
-            
-            // BİNA TİPİ VE ALT KAT MANTIĞI YARGICI
             const bldType = document.getElementById('sys_bld_type').value;
             const global_t_below = parseFloat(document.getElementById('sys_t_below_global').value);
             
             roomCards.forEach(card => {
                 roomNames.push(card.querySelector('.r-name').value);
-                
                 let room_t_below = 20; 
                 
-                // Eğer apartmansa herkes global değeri alır, müstakilse herkesin menüsüne bakılır
                 if (bldType === 'apartment') {
                     room_t_below = global_t_below;
                 } else {
@@ -316,10 +310,14 @@
                 });
                 const result = await response.json();
 
+                // YENİ: Toplam Kollektör Ağzını Hesapla
+                const totalManifoldPorts = result.num_zones.reduce((a, b) => a + b, 0);
+
                 document.getElementById('res_t_out').innerText = result.calculated_t_out.toFixed(1) + " °C";
+                document.getElementById('res_manifold').innerText = totalManifoldPorts + " Ağız";
                 document.getElementById('res_pump_w').innerText = result.sys_pump_power.toFixed(1) + " W";
                 document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
-                document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg CO₂";
+                document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg";
 
                 const resContainer = document.getElementById('results-container');
                 resContainer.innerHTML = '';
@@ -338,23 +336,28 @@
                     const isCritical = (i === maxDropIdx);
                     const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
                     
+                    const multiZoneTag = (result.num_zones[i] > 1) ? `<span style="color:white; background:var(--info); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">ÇOKLU ZON (${result.num_zones[i]} Hat)</span>` : '';
+
                     resContainer.innerHTML += `
                         <div class="result-room-card" style="${!isSufficient ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
                             <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
-                                <span>📍 ${roomNames[i]} ${criticalTag} ${statusTag}</span>
+                                <span>📍 ${roomNames[i]} ${criticalTag} ${multiZoneTag} ${statusTag}</span>
                                 <span style="font-size:11px; color:#666;">
                                     Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> | 
                                     Sistem: <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
                                 </span>
                             </div>
                             <div class="res-item"><span>Çıkan Isı</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
-                            <div class="res-item"><span>Aşağı Kaçan</span><strong style="color:var(--danger);">${result.q_down[i].toFixed(1)} W/m²</strong></div>
-                            <div class="res-item"><span>Yüzey Sıc.</span><strong>${result.t_surf[i].toFixed(1)} °C</strong></div>
-                            <div class="res-item"><span>Gerçek Metraj</span><strong>${result.pipe_len[i].toFixed(0)} m</strong></div>
+                            
+                            <div class="res-item" style="background: #e1f5fe;"><span>Boru Metrajı</span><strong style="color:var(--info);">${result.len_per_zone[i].toFixed(0)}m (x${result.num_zones[i]} Hat)</strong></div>
+                            <div class="res-item" style="background: #e1f5fe;"><span>Debimetre Ayarı</span><strong style="color:var(--info);">${result.flow_lpm[i].toFixed(1)} L/min</strong></div>
                             
                             <div class="res-item"><span>Devre Direnci</span><strong style="color:${isCritical ? 'var(--warning)' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
+                            
+                            <div class="res-item"><span>Yüzey Sıc.</span><strong>${result.t_surf[i].toFixed(1)} °C</strong></div>
+                            <div class="res-item"><span>Aşağı Kaçan</span><strong style="color:var(--danger);">${result.q_down[i].toFixed(1)} W/m²</strong></div>
                             <div class="res-item eco-item"><span>Enerji Payı</span><strong style="color:var(--eco);">${result.room_energy[i].toFixed(0)} kWh</strong></div>
-                            <div class="res-item eco-item" style="grid-column: span 2;"><span>Karbon Faturası</span><strong style="color:var(--eco);">${result.room_co2[i].toFixed(0)} kg CO₂</strong></div>
+                            <div class="res-item eco-item"><span>Karbon Faturası</span><strong style="color:var(--eco);">${result.room_co2[i].toFixed(0)} kg CO₂</strong></div>
                         </div>
                     `;
                 }
