@@ -1,5 +1,5 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2] = floor_heating_model(t_water, t_below, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & GLOBAL CLIMATE SOLVER (V0.7.0)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
+    % MULTI-ZONE HYDRAULIC, ECO & ARCHITECTURAL SOLVER (V0.8.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -29,8 +29,9 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         r_cover = r_cover_arr(i);
         room_area = area_arr(i);
         dist_to_coll = dist_arr(i); 
+        t_below = t_below_arr(i); % YENİ: Her odanın kendi zemin şartı
 
-        % ISI KAYBI HESABI (Rüzgar Faktörü ile Çarpılarak)
+        % ISI KAYBI HESABI
         ext_wall_len = ext_wall_len_arr(i);
         room_height = room_height_arr(i);
         window_area = window_area_arr(i);
@@ -40,7 +41,6 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         a_wall_gross = ext_wall_len * room_height;
         a_wall_net = max(0, a_wall_gross - window_area);
         
-        % YENİ: Rüzgar Faktörü Isı Kaybını Artırır/Azaltır
         q_loss = (a_wall_net * u_wall * wind_factor + window_area * u_window * wind_factor) * (t_room - t_out);
         q_loss_arr(i) = max(0, q_loss); 
 
@@ -55,7 +55,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         q_flux = ((t_water - t_room) / r_total) * fin_efficiency;
         q_flux_arr(i) = q_flux;
         t_surf_arr(i) = t_room + (q_flux / h_conv_rad);
-        q_down = (t_water - t_below) / r_insulation;
+        q_down = (t_water - t_below) / r_insulation; % Aşağı kaçan ısı dinamikleşti!
         q_down_arr(i) = q_down;
         q_total = q_flux + q_down; 
         q_total_arr(i) = q_total;

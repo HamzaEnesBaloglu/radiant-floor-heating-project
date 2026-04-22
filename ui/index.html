@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-width=1.0">
     <title>Global Radiant Floor Solver</title>
     <style>
-        :root { --bg: #f4f7f9; --panel: #ffffff; --primary: #0056b3; --text: #333; --border: #e1e4e8; --success: #2e7d32; --eco: #4caf50; --danger: #d32f2f;}
+        :root { --bg: #f4f7f9; --panel: #ffffff; --primary: #0056b3; --text: #333; --border: #e1e4e8; --success: #2e7d32; --eco: #4caf50; --danger: #d32f2f; --warning: #ff9800;}
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary); margin: 0; font-weight: 600; font-size: 28px; }
         .container { display: flex; gap: 20px; max-width: 1400px; margin: auto; align-items: flex-start;}
         .panel { background: var(--panel); padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
-        .inputs { flex: 1; min-width: 480px; }
+        .inputs { flex: 1; min-width: 520px; }
         .results { flex: 2; display: flex; flex-direction: column; gap: 20px; }
         h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 10px; color: #2c3e50; font-size: 16px; display: flex; justify-content: space-between;}
         
@@ -24,7 +24,7 @@
         .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .input-group { flex: 1; }
         label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 5px; color: #555; }
-        input, select { width: 100%; padding: 7px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;}
+        input, select { width: 100%; padding: 7px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 12px;}
         
         button.primary-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.3s; margin-top: 10px; font-size: 15px;}
         button.add-btn { background: white; color: var(--primary); border: 2px dashed var(--primary); width: 100%; padding: 10px; cursor: pointer; border-radius: 4px; font-weight: bold; margin-bottom: 15px;}
@@ -46,7 +46,7 @@
 
     <div class="header">
         <h1>Global Radiant Floor Solver</h1>
-        <p>İklim, Makroklima ve Hidrolik Simülasyon Ağı</p>
+        <p>Mimari Yapı, Makroklima ve Hidrolik Simülasyon Ağı (v0.8.1)</p>
     </div>
 
     <div class="container">
@@ -57,25 +57,40 @@
                     <div class="input-group">
                         <label>İklim Bölgesi (Deniz Seviyesi)</label>
                         <select id="sys_climate">
-                            <option value="3.0">Bölge 1: Sıcak/Akdeniz (Örn: Antalya, Miami)</option>
-                            <option value="-3.0">Bölge 2: Ilıman (Örn: İstanbul, Londra)</option>
-                            <option value="-9.0" selected>Bölge 3: Soğuk (Örn: Ankara, Berlin)</option>
-                            <option value="-15.0">Bölge 4: Sert (Örn: Erzurum, Moskova)</option>
+                            <option value="3.0">Bölge 1: Sıcak (Örn: Antalya)</option>
+                            <option value="-3.0">Bölge 2: Ilıman (Örn: İstanbul)</option>
+                            <option value="-9.0" selected>Bölge 3: Soğuk (Örn: Ankara)</option>
+                            <option value="-15.0">Bölge 4: Sert (Örn: Erzurum)</option>
                         </select>
                     </div>
                     <div class="input-group">
                         <label>Rakım (m)</label>
-                        <input type="number" id="sys_altitude" value="900" step="50" title="Her 100m'de sıcaklık 0.65°C düşer.">
+                        <input type="number" id="sys_altitude" value="900" step="50">
+                    </div>
+                    <div class="input-group">
+                        <label>Rüzgar Maruziyeti</label>
+                        <select id="sys_wind">
+                            <option value="0.9">Korunaklı (Şehir İçi)</option>
+                            <option value="1.0" selected>Normal (Banliyö)</option>
+                            <option value="1.15">Açık Arazi (+15% Kayıp)</option>
+                        </select>
                     </div>
                 </div>
+            </div>
+
+            <h3>🏠 Bina ve Mimari Ayarlar</h3>
+            <div class="global-settings" style="background:#fff3e0; border: 1px solid #ffe0b2;">
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Konum (Rüzgar Maruziyeti)</label>
-                        <select id="sys_wind">
-                            <option value="0.9">Korunaklı (Şehir İçi / Vadi)</option>
-                            <option value="1.0" selected>Normal (Banliyö)</option>
-                            <option value="1.15">Açık Arazi / Rüzgarlı (+15% Isı Kaybı)</option>
+                        <label>Bina Tipi Seçimi</label>
+                        <select id="sys_bld_type" onchange="toggleBuildingType()" style="font-weight: bold; color: #e65100;">
+                            <option value="apartment" selected>🏢 Apartman (Tüm odaların altı aynı)</option>
+                            <option value="detached">🏡 Müstakil / Dubleks (Her oda farklı olabilir)</option>
                         </select>
+                    </div>
+                    <div class="input-group" id="global_t_below_group">
+                        <label>Tüm Odalar İçin Alt Kat Sıc. (°C)</label>
+                        <input type="number" id="sys_t_below_global" value="20" step="1" title="Örn: Alt komşu varsa 20, ısıtılmayan dükkansa 10 yazın">
                     </div>
                 </div>
             </div>
@@ -84,7 +99,6 @@
             <div class="global-settings">
                 <div class="input-row">
                     <div class="input-group"><label>Kazan Su Sıc. (°C)</label><input type="number" id="sys_t_water" value="40" step="1"></div>
-                    <div class="input-group"><label>Alt Kat Sıc. (°C)</label><input type="number" id="sys_t_below" value="15" step="1"></div>
                     <div class="input-group"><label>Alt Yalıtım (R)</label><input type="number" id="sys_r_ins" value="0.85" step="0.05"></div>
                 </div>
                 <div class="input-row">
@@ -104,7 +118,7 @@
                 </div>
             </div>
 
-            <h3>Odalar (Isı Kaybı ve Kollektör Dağılımı)</h3>
+            <h3>Odalar (Mimari ve Isı Kaybı)</h3>
             <div id="room-container"></div>
             
             <button class="add-btn" onclick="addRoom()">+ Yeni Oda Ekle</button>
@@ -141,37 +155,75 @@
 
     <script>
         let roomCount = 0;
-        window.onload = () => { addRoom("Salon", 25, 4); addRoom("Yatak Odası", 15, 12); };
+        
+        // Sayfa açıldığında varsayılan odaları ekle ve menüleri ayarla
+        window.onload = () => { 
+            addRoom("Salon", 25, 4); 
+            addRoom("Yatak Odası", 15, 12); 
+            toggleBuildingType(); // İlk açılışta apartman seçili olduğu için ona göre gizle
+        };
+
+        // AKILLI MENÜ GİZLEME/GÖSTERME FONKSİYONU
+        function toggleBuildingType() {
+            const bldType = document.getElementById('sys_bld_type').value;
+            const globalTBelowGroup = document.getElementById('global_t_below_group');
+            const roomFloorSelects = document.querySelectorAll('.room-floor-group');
+
+            if (bldType === 'apartment') {
+                globalTBelowGroup.style.display = 'block';
+                // Odalardaki spesifik zemin menülerini gizle
+                roomFloorSelects.forEach(el => el.style.display = 'none');
+            } else {
+                globalTBelowGroup.style.display = 'none';
+                // Odalardaki spesifik zemin menülerini göster
+                roomFloorSelects.forEach(el => el.style.display = 'block');
+            }
+        }
 
         function addRoom(defaultName = "", defaultArea = 20, defaultDist = 5) {
             roomCount++;
             const container = document.getElementById('room-container');
+            
+            // Şu anki bina tipine göre eklenecek odanın zemin menüsünün görünürlüğünü belirle
+            const bldType = document.getElementById('sys_bld_type').value;
+            const displayStyle = (bldType === 'apartment') ? 'display: none;' : 'display: block;';
+
             const roomHtml = `
                 <div class="room-card" id="room_${roomCount}">
                     <button class="remove-btn" onclick="removeRoom('room_${roomCount}')">X SİL</button>
                     <div class="input-row">
                         <div class="input-group"><label>Oda Adı</label><input type="text" class="r-name" value="${defaultName || 'Oda ' + roomCount}"></div>
                         <div class="input-group"><label>Net Alan (m²)</label><input type="number" class="r-area" value="${defaultArea}"></div>
-                        <div class="input-group"><label>Sıcaklık (°C)</label><input type="number" class="r-temp" value="20"></div>
+                        <div class="input-group"><label>İç Sıcaklık (°C)</label><input type="number" class="r-temp" value="20"></div>
                     </div>
+                    
                     <div class="input-row">
-                        <div class="input-group"><label>Kollektöre Uz. (m)</label><input type="number" class="r-dist" value="${defaultDist}"></div>
+                        <div class="input-group"><label>Kollektöre (m)</label><input type="number" class="r-dist" value="${defaultDist}"></div>
                         <div class="input-group"><label>Boru Aralığı (m)</label><input type="number" class="r-spacing" value="0.15" step="0.05"></div>
-                        <div class="input-group"><label>Zemin Kaplaması</label>
+                        <div class="input-group"><label>Üst Zemin</label>
                             <select class="r-cover">
                                 <option value="0.05">Seramik</option>
                                 <option value="0.10" selected>Parke</option>
                                 <option value="0.25">Halı</option>
                             </select>
                         </div>
+                        <div class="input-group room-floor-group" style="${displayStyle}">
+                            <label style="color:var(--primary);">Zemin Altı (Müstakil)</label>
+                            <select class="r-floor">
+                                <option value="heated" selected>Isıtılan Kat (20°C)</option>
+                                <option value="ground">Toprak Zemin (10°C)</option>
+                                <option value="garage">Bodrum/Garaj (5°C)</option>
+                                <option value="exposed">Açık Hava (Dış Sıc.)</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="loss-panel">
-                        <div style="font-size:11px; font-weight:bold; color:var(--primary); margin-bottom:5px;">🔍 Isı Kaybı Parametreleri</div>
+                        <div style="font-size:11px; font-weight:bold; color:var(--primary); margin-bottom:5px;">🔍 Dış Cephe (Isı Kaybı) Parametreleri</div>
                         <div class="input-row">
-                            <div class="input-group"><label>Dış Cephe Uzunluğu (m)</label><input type="number" class="r-ext-wall" value="4"></div>
-                            <div class="input-group"><label>Tavan Yüksekliği (m)</label><input type="number" class="r-height" value="2.8"></div>
-                            <div class="input-group"><label>Pencere Alanı (m²)</label><input type="number" class="r-window" value="2"></div>
+                            <div class="input-group"><label>Cephe Uz. (m)</label><input type="number" class="r-ext-wall" value="4"></div>
+                            <div class="input-group"><label>Yükseklik (m)</label><input type="number" class="r-height" value="2.8"></div>
+                            <div class="input-group"><label>Cam Alanı (m²)</label><input type="number" class="r-window" value="2"></div>
                         </div>
                         <div class="input-row" style="margin-bottom:0;">
                             <div class="input-group"><label>Duvar Yalıtımı</label>
@@ -198,18 +250,18 @@
         function removeRoom(id) { document.getElementById(id).remove(); }
 
         async function runSimulation() {
+            const base_temp = parseFloat(document.getElementById('sys_climate').value);
+            const altitude = parseFloat(document.getElementById('sys_altitude').value);
+            const calculated_t_out = base_temp - (altitude * 0.0065);
+
             const data = {
                 t_water: parseFloat(document.getElementById('sys_t_water').value),
-                t_below: parseFloat(document.getElementById('sys_t_below').value),
                 r_insulation: parseFloat(document.getElementById('sys_r_ins').value),
                 dist_main: parseFloat(document.getElementById('sys_dist_main').value),
                 d_out_main: parseFloat(document.getElementById('sys_d_out_main').value),
-                
-                // YENİ İKLİM VERİLERİ
-                climate_zone: parseFloat(document.getElementById('sys_climate').value),
-                altitude: parseFloat(document.getElementById('sys_altitude').value),
+                climate_zone: base_temp,
+                altitude: altitude,
                 wind_factor: parseFloat(document.getElementById('sys_wind').value),
-
                 cop: parseFloat(document.getElementById('eco_cop').value),
                 hours: parseFloat(document.getElementById('eco_hours').value),
                 co2_factor: parseFloat(document.getElementById('eco_co2').value),
@@ -219,14 +271,33 @@
             const roomCards = document.querySelectorAll('.room-card');
             const roomNames = [];
             
+            // BİNA TİPİ VE ALT KAT MANTIĞI YARGICI
+            const bldType = document.getElementById('sys_bld_type').value;
+            const global_t_below = parseFloat(document.getElementById('sys_t_below_global').value);
+            
             roomCards.forEach(card => {
                 roomNames.push(card.querySelector('.r-name').value);
+                
+                let room_t_below = 20; 
+                
+                // Eğer apartmansa herkes global değeri alır, müstakilse herkesin menüsüne bakılır
+                if (bldType === 'apartment') {
+                    room_t_below = global_t_below;
+                } else {
+                    let floor_type = card.querySelector('.r-floor').value;
+                    if (floor_type === "ground") room_t_below = 10; 
+                    if (floor_type === "garage") room_t_below = 5;  
+                    if (floor_type === "exposed") room_t_below = calculated_t_out; 
+                    if (floor_type === "heated") room_t_below = 20; 
+                }
+
                 data.rooms.push({
                     room_area: parseFloat(card.querySelector('.r-area').value),
                     t_room: parseFloat(card.querySelector('.r-temp').value),
                     spacing: parseFloat(card.querySelector('.r-spacing').value),
                     r_cover: parseFloat(card.querySelector('.r-cover').value),
                     dist_to_collector: parseFloat(card.querySelector('.r-dist').value),
+                    t_below: room_t_below, 
                     ext_wall_len: parseFloat(card.querySelector('.r-ext-wall').value),
                     room_height: parseFloat(card.querySelector('.r-height').value),
                     window_area: parseFloat(card.querySelector('.r-window').value),
@@ -245,11 +316,10 @@
                 });
                 const result = await response.json();
 
-                // GLOBAL SONUÇLAR (Toroslar Matematiği Buraya Yazdırılıyor)
                 document.getElementById('res_t_out').innerText = result.calculated_t_out.toFixed(1) + " °C";
                 document.getElementById('res_pump_w').innerText = result.sys_pump_power.toFixed(1) + " W";
                 document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
-                document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg CO₂"; // YENİ EKLENEN SATIR
+                document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg CO₂";
 
                 const resContainer = document.getElementById('results-container');
                 resContainer.innerHTML = '';
@@ -266,7 +336,7 @@
                         : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ ISITMA</span>`;
 
                     const isCritical = (i === maxDropIdx);
-                    const criticalTag = isCritical ? `<span style="color:white; background:#ff9800; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
+                    const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
                     
                     resContainer.innerHTML += `
                         <div class="result-room-card" style="${!isSufficient ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
@@ -282,7 +352,7 @@
                             <div class="res-item"><span>Yüzey Sıc.</span><strong>${result.t_surf[i].toFixed(1)} °C</strong></div>
                             <div class="res-item"><span>Gerçek Metraj</span><strong>${result.pipe_len[i].toFixed(0)} m</strong></div>
                             
-                            <div class="res-item"><span>Devre Direnci</span><strong style="color:${isCritical ? '#ff9800' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
+                            <div class="res-item"><span>Devre Direnci</span><strong style="color:${isCritical ? 'var(--warning)' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
                             <div class="res-item eco-item"><span>Enerji Payı</span><strong style="color:var(--eco);">${result.room_energy[i].toFixed(0)} kWh</strong></div>
                             <div class="res-item eco-item" style="grid-column: span 2;"><span>Karbon Faturası</span><strong style="color:var(--eco);">${result.room_co2[i].toFixed(0)} kg CO₂</strong></div>
                         </div>

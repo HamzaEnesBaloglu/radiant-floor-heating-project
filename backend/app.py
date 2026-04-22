@@ -19,19 +19,16 @@ except Exception as e:
 def calculate():
     data = request.json
     
-    # Global Sistem Verileri
+    # Global Sistem Verileri (t_below buradan silindi!)
     t_water = float(data.get('t_water', 40.0))
-    t_below = float(data.get('t_below', 15.0))
     r_insulation = float(data.get('r_insulation', 0.85))
     dist_main = float(data.get('dist_main', 5.0))
     d_out_main = float(data.get('d_out_main', 0.025))
     
-    # YENİ: MAKROKLİMA VE MİKROKLİMA
-    base_temp = float(data.get('climate_zone', -5.0)) # Deniz seviyesi sıcaklığı
-    altitude = float(data.get('altitude', 0.0))       # Rakım
-    wind_factor = float(data.get('wind_factor', 1.0)) # Rüzgar çarpanı
-    
-    # Toroslar Mantığı: Her 100 metrede sıcaklık 0.65 derece düşer
+    # Makroklima Verileri
+    base_temp = float(data.get('climate_zone', -5.0))
+    altitude = float(data.get('altitude', 0.0))
+    wind_factor = float(data.get('wind_factor', 1.0))
     t_out_real = base_temp - (altitude * 0.0065)
 
     # ECO Parametreleri
@@ -43,13 +40,15 @@ def calculate():
     if not rooms:
         return jsonify({"status": "error", "message": "En az bir oda eklemelisiniz."}), 400
 
-    # Oda Verileri
+    # Oda Verileri (Standart)
     t_room_list = [float(r['t_room']) for r in rooms]
     spacing_list = [float(r['spacing']) for r in rooms]
     r_cover_list = [float(r['r_cover']) for r in rooms]
     area_list = [float(r['room_area']) for r in rooms]
     dist_list = [float(r['dist_to_collector']) for r in rooms]
+    t_below_list = [float(r['t_below']) for r in rooms] # YENİ: Her odanın kendi alt sıcaklığı
     
+    # Isı Kaybı Verileri
     ext_wall_len_list = [float(r['ext_wall_len']) for r in rooms]
     room_height_list = [float(r['room_height']) for r in rooms]
     window_area_list = [float(r['window_area']) for r in rooms]
@@ -57,10 +56,10 @@ def calculate():
     u_window_list = [float(r['u_window']) for r in rooms]
 
     try:
-        # MATLAB fonksiyonuna rüzgar faktörünü ve gerçek dış sıcaklığı yolluyoruz
+        # t_below_list array olarak MATLAB'a iletiliyor
         q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2 = eng.floor_heating_model(
-            t_water, t_below, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, 
-            t_out_real, wind_factor, # GÜNCELLENDİ
+            t_water, matlab.double(t_below_list), r_insulation, dist_main, d_out_main, cop, hours, co2_factor, 
+            t_out_real, wind_factor,
             matlab.double(t_room_list), matlab.double(spacing_list),
             matlab.double(r_cover_list), matlab.double(area_list), matlab.double(dist_list),
             matlab.double(ext_wall_len_list), matlab.double(room_height_list), matlab.double(window_area_list),
@@ -74,7 +73,7 @@ def calculate():
 
         return jsonify({
             "status": "success",
-            "calculated_t_out": t_out_real, # Arayüzde göstermek için geri yolluyoruz
+            "calculated_t_out": t_out_real,
             "q_flux": to_list(q_flux_arr),
             "t_surf": to_list(t_surf_arr),
             "q_down": to_list(q_down_arr),
