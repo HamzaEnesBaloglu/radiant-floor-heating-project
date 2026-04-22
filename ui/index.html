@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-width=1.0">
-    <title>Green Building Radiant Floor Solver</title>
+    <title>Global Radiant Floor Solver</title>
     <style>
         :root { --bg: #f4f7f9; --panel: #ffffff; --primary: #0056b3; --text: #333; --border: #e1e4e8; --success: #2e7d32; --eco: #4caf50; --danger: #d32f2f;}
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
@@ -45,43 +45,52 @@
 <body>
 
     <div class="header">
-        <h1>Green Building Radiant Floor Solver</h1>
-        <p>Isı Kaybı, Enerji Denetimi ve Hidrolik Simülasyon</p>
+        <h1>Global Radiant Floor Solver</h1>
+        <p>İklim, Makroklima ve Hidrolik Simülasyon Ağı</p>
     </div>
 
     <div class="container">
         <div class="panel inputs">
-            <h3>Kazan & Dış Ortam Ayarları</h3>
+            <h3>🌍 Makroklima ve Konum Ayarları</h3>
             <div class="global-settings">
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Dış Ortam Sıc. (°C)</label>
-                        <input type="number" id="sys_t_out" value="-5" step="1">
+                        <label>İklim Bölgesi (Deniz Seviyesi)</label>
+                        <select id="sys_climate">
+                            <option value="3.0">Bölge 1: Sıcak/Akdeniz (Örn: Antalya, Miami)</option>
+                            <option value="-3.0">Bölge 2: Ilıman (Örn: İstanbul, Londra)</option>
+                            <option value="-9.0" selected>Bölge 3: Soğuk (Örn: Ankara, Berlin)</option>
+                            <option value="-15.0">Bölge 4: Sert (Örn: Erzurum, Moskova)</option>
+                        </select>
                     </div>
                     <div class="input-group">
-                        <label>Kazan Su Sıc. (°C)</label>
-                        <input type="number" id="sys_t_water" value="40" step="1">
-                    </div>
-                    <div class="input-group">
-                        <label>Alt Kat Sıc. (°C)</label>
-                        <input type="number" id="sys_t_below" value="15" step="1">
+                        <label>Rakım (m)</label>
+                        <input type="number" id="sys_altitude" value="900" step="50" title="Her 100m'de sıcaklık 0.65°C düşer.">
                     </div>
                 </div>
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Alt Yalıtım (R)</label>
-                        <input type="number" id="sys_r_ins" value="0.85" step="0.05">
-                    </div>
-                    <div class="input-group">
-                        <label>Kazan->Kollektör (m)</label>
-                        <input type="number" id="sys_dist_main" value="10" step="1">
-                    </div>
-                    <div class="input-group">
-                        <label>Ana Boru Çapı</label>
-                        <select id="sys_d_out_main">
-                            <option value="0.025">25 mm</option>
-                            <option value="0.032" selected>32 mm</option>
+                        <label>Konum (Rüzgar Maruziyeti)</label>
+                        <select id="sys_wind">
+                            <option value="0.9">Korunaklı (Şehir İçi / Vadi)</option>
+                            <option value="1.0" selected>Normal (Banliyö)</option>
+                            <option value="1.15">Açık Arazi / Rüzgarlı (+15% Isı Kaybı)</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Kazan & Ana Hat Ayarları</h3>
+            <div class="global-settings">
+                <div class="input-row">
+                    <div class="input-group"><label>Kazan Su Sıc. (°C)</label><input type="number" id="sys_t_water" value="40" step="1"></div>
+                    <div class="input-group"><label>Alt Kat Sıc. (°C)</label><input type="number" id="sys_t_below" value="15" step="1"></div>
+                    <div class="input-group"><label>Alt Yalıtım (R)</label><input type="number" id="sys_r_ins" value="0.85" step="0.05"></div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group"><label>Kazan->Kollektör (m)</label><input type="number" id="sys_dist_main" value="10" step="1"></div>
+                    <div class="input-group"><label>Ana Boru Çapı</label>
+                        <select id="sys_d_out_main"><option value="0.025">25 mm</option><option value="0.032" selected>32 mm</option></select>
                     </div>
                 </div>
             </div>
@@ -106,7 +115,11 @@
             <h3>Tüm Ev (Global) Özeti <span style="font-size: 12px; color:var(--eco);">🌍 Green Deal Dashboard</span></h3>
             <div class="summary-dashboard">
                 <div class="dash-box">
-                    <div class="dash-title">Gerekli Pompa Gücü</div>
+                    <div class="dash-title" style="color: #ccc; cursor: help;" title="Sistemin test edildiği en kötü kış senaryosu (Tasarım Sıcaklığı)">Hesaplanan Dış Sıc. ℹ️</div>
+                    <div class="dash-val" id="res_t_out" style="color: #fff;">-- °C</div>
+                </div>
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
+                    <div class="dash-title">Pompa Gücü</div>
                     <div class="dash-val" id="res_pump_w" style="color: #ff9800;">-- W</div>
                 </div>
                 <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
@@ -114,7 +127,7 @@
                     <div class="dash-val eco" id="res_sys_energy">-- kWh</div>
                 </div>
                 <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
-                    <div class="dash-title">Karbon Ayak İzi (Yıllık)</div>
+                    <div class="dash-title">Karbon Ayak İzi</div>
                     <div class="dash-val eco" id="res_sys_co2" style="color: #f44336;">-- kg CO₂</div>
                 </div>
             </div>
@@ -191,7 +204,12 @@
                 r_insulation: parseFloat(document.getElementById('sys_r_ins').value),
                 dist_main: parseFloat(document.getElementById('sys_dist_main').value),
                 d_out_main: parseFloat(document.getElementById('sys_d_out_main').value),
-                t_out: parseFloat(document.getElementById('sys_t_out').value),
+                
+                // YENİ İKLİM VERİLERİ
+                climate_zone: parseFloat(document.getElementById('sys_climate').value),
+                altitude: parseFloat(document.getElementById('sys_altitude').value),
+                wind_factor: parseFloat(document.getElementById('sys_wind').value),
+
                 cop: parseFloat(document.getElementById('eco_cop').value),
                 hours: parseFloat(document.getElementById('eco_hours').value),
                 co2_factor: parseFloat(document.getElementById('eco_co2').value),
@@ -209,7 +227,6 @@
                     spacing: parseFloat(card.querySelector('.r-spacing').value),
                     r_cover: parseFloat(card.querySelector('.r-cover').value),
                     dist_to_collector: parseFloat(card.querySelector('.r-dist').value),
-                    // YENİ ISI KAYBI VERİLERİ
                     ext_wall_len: parseFloat(card.querySelector('.r-ext-wall').value),
                     room_height: parseFloat(card.querySelector('.r-height').value),
                     window_area: parseFloat(card.querySelector('.r-window').value),
@@ -228,21 +245,20 @@
                 });
                 const result = await response.json();
 
-                // 1. GLOBAL SONUÇLAR
+                // GLOBAL SONUÇLAR (Toroslar Matematiği Buraya Yazdırılıyor)
+                document.getElementById('res_t_out').innerText = result.calculated_t_out.toFixed(1) + " °C";
                 document.getElementById('res_pump_w').innerText = result.sys_pump_power.toFixed(1) + " W";
                 document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
-                document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg CO₂";
+                document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg CO₂"; // YENİ EKLENEN SATIR
 
-                // 2. LOKAL SONUÇLAR VE YARGICIN KARARI
                 const resContainer = document.getElementById('results-container');
                 resContainer.innerHTML = '';
 
                 let maxDropIdx = result.p_drop.indexOf(Math.max(...result.p_drop)); 
 
                 for (let i = 0; i < result.q_total.length; i++) {
-                    // KARAR MEKANİZMASI: Üretilen Isı vs Kaybedilen Isı
-                    const supplied_heat = result.q_flux[i] * data.rooms[i].room_area; // Odaya verilen (Watt)
-                    const heat_loss = result.q_loss[i]; // Dışarı kaçan (Watt)
+                    const supplied_heat = result.q_flux[i] * data.rooms[i].room_area;
+                    const heat_loss = result.q_loss[i]; 
                     
                     const isSufficient = supplied_heat >= heat_loss;
                     const statusTag = isSufficient 
