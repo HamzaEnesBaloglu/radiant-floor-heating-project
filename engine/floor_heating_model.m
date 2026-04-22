@@ -1,5 +1,5 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_arr, room_energy_arr, room_co2_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2] = floor_heating_model(t_water, t_below, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr)
-    % MULTI-ZONE HYDRAULIC & GREEN BUILDING ECO-SOLVER (V0.6.0)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2] = floor_heating_model(t_water, t_below, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
+    % MULTI-ZONE HYDRAULIC, ECO & HEAT LOSS SOLVER (V0.6.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -10,6 +10,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
     p_drop_arr = zeros(1, num_rooms);
     room_energy_arr = zeros(1, num_rooms);
     room_co2_arr = zeros(1, num_rooms);
+    q_loss_arr = zeros(1, num_rooms);
 
     % Fiziksel Sabitler
     h_conv_rad = 10.8; k_concrete = 1.4; t_concrete = 0.05;
@@ -21,7 +22,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
     cross_area_room = pi * (d_in_room^2) / 4;
 
     sys_total_heat = 0; 
-    total_vol_flow = 0; % Pompa gücü için toplam debi (m^3/s)
+    total_vol_flow = 0; 
 
     for i = 1:num_rooms
         t_room = t_room_arr(i);
@@ -30,7 +31,20 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         room_area = area_arr(i);
         dist_to_coll = dist_arr(i); 
 
-        % Termal Hesaplar
+        % ISI KAYBI HESABI (Heat Loss Calculation)
+        ext_wall_len = ext_wall_len_arr(i);
+        room_height = room_height_arr(i);
+        window_area = window_area_arr(i);
+        u_wall = u_wall_arr(i);
+        u_window = u_window_arr(i);
+
+        a_wall_gross = ext_wall_len * room_height;
+        a_wall_net = max(0, a_wall_gross - window_area); % Eksiye düşmemesi için
+        
+        q_loss = (a_wall_net * u_wall + window_area * u_window) * (t_room - t_out);
+        q_loss_arr(i) = max(0, q_loss); % Soğutma değil ısıtma mevsimi kabulü
+
+        % ISI KAZANCI VE TERMAL HESAPLAR
         r_up = r_concrete + r_cover;
         r_total = r_up + (1 / h_conv_rad);
         u_surface = 1 / (r_cover + (1 / h_conv_rad));
@@ -43,7 +57,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         t_surf_arr(i) = t_room + (q_flux / h_conv_rad);
         q_down = (t_water - t_below) / r_insulation;
         q_down_arr(i) = q_down;
-        q_total = q_flux + q_down;
+        q_total = q_flux + q_down; % Kazan için toplam yük (W/m2)
         q_total_arr(i) = q_total;
 
         total_pipe_length = (room_area / spacing) + (2 * dist_to_coll);
@@ -54,7 +68,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         
         mass_flow = total_heat_watt / (cp * delta_T_water); 
         vol_flow = mass_flow / rho; 
-        total_vol_flow = total_vol_flow + vol_flow; % Evin toplam debisine ekle
+        total_vol_flow = total_vol_flow + vol_flow; 
         
         velocity = vol_flow / cross_area_room;
         Re = (rho * velocity * d_in_room) / mu;
@@ -66,11 +80,9 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
         delta_p_pascal = f * (total_pipe_length / d_in_room) * (rho * velocity^2) / 2;
         p_drop_arr(i) = delta_p_pascal / 1000; 
 
-        % ECO-METRİKLER (Lokal - Oda Bazında)
-        % Odanın Yıllık Tüketimi (kWh) = (Isı Yükü kW * Saat) / COP
+        % ECO-METRİKLER 
         room_energy_kwh = (total_heat_watt / 1000 * hours) / cop;
         room_energy_arr(i) = room_energy_kwh;
-        % Odanın Yıllık CO2 Salınımı (kg)
         room_co2_arr(i) = room_energy_kwh * co2_factor;
     end
 
@@ -92,15 +104,10 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, pipe_len_arr, p_drop_
 
     sys_max_pressure = max(p_drop_arr) + main_p_drop;
 
-    % ECO-METRİKLER (Global - Tüm Sistem)
-    % Pompa Gücü (Watt) = (Debi * Basınç Pa) / Verim(0.6)
     sys_max_pressure_pa = sys_max_pressure * 1000;
     sys_pump_power = (total_vol_flow * sys_max_pressure_pa) / 0.6; 
     
-    % Evin Toplam Yıllık Tüketimi (Isıtma + Pompanın Elektriği)
     pump_energy_kwh = (sys_pump_power / 1000) * hours;
     sys_total_energy = sum(room_energy_arr) + pump_energy_kwh;
-    
-    % Evin Toplam Karbon Ayak İzi
     sys_total_co2 = sys_total_energy * co2_factor;
 end
