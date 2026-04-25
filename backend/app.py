@@ -51,15 +51,15 @@ def calculate():
     u_window_list = [float(r['u_window']) for r in rooms]
 
     try:
-        # nargout=17 oldu, debi ve zonlama parametreleri eklendi
-        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2 = eng.floor_heating_model(
+        # nargout=22 oldu (sys_t_mean eklendi)
+        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean = eng.floor_heating_model(
             t_water, matlab.double(t_below_list), r_insulation, dist_main, d_out_main, cop, hours, co2_factor, 
             t_out_real, wind_factor,
             matlab.double(t_room_list), matlab.double(spacing_list),
             matlab.double(r_cover_list), matlab.double(area_list), matlab.double(dist_list),
             matlab.double(ext_wall_len_list), matlab.double(room_height_list), matlab.double(window_area_list),
             matlab.double(u_wall_list), matlab.double(u_window_list),
-            nargout=17
+            nargout=22
         )
         
         def to_list(matlab_val):
@@ -73,19 +73,24 @@ def calculate():
             "t_surf": to_list(t_surf_arr),
             "q_down": to_list(q_down_arr),
             "q_total": to_list(q_total_arr),
-            "len_per_zone": to_list(len_per_zone_arr), # YENİ
+            "len_per_zone": to_list(len_per_zone_arr), 
             "p_drop": to_list(p_drop_arr),
             "room_energy": to_list(room_energy_arr),
             "room_co2": to_list(room_co2_arr),
             "q_loss": to_list(q_loss_arr), 
-            "num_zones": to_list(num_zones_arr), # YENİ
-            "flow_lpm": to_list(flow_lpm_arr), # YENİ
+            "num_zones": to_list(num_zones_arr), 
+            "flow_lpm": to_list(flow_lpm_arr), 
+            "fin_eff": to_list(fin_eff_arr), 
+            "reynolds": to_list(re_arr),     
+            "coverage_ratio": to_list(coverage_ratio_arr), 
+            "surplus_watt": to_list(surplus_watt_arr),     
             "sys_total_heat": sys_total_heat,
             "sys_max_pressure": sys_max_pressure,
             "main_p_drop": main_p_drop,
             "sys_pump_power": sys_pump_power,
             "sys_total_energy": sys_total_energy,
-            "sys_total_co2": sys_total_co2
+            "sys_total_co2": sys_total_co2,
+            "sys_t_mean": sys_t_mean # YENİ
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
