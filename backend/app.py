@@ -28,6 +28,9 @@ def calculate():
     altitude = float(data.get('altitude', 0.0))
     wind_factor = float(data.get('wind_factor', 1.0))
     t_out_real = base_temp - (altitude * 0.0065)
+    
+    # YENİ: Bağıl Nem
+    rh = float(data.get('rh', 50.0))
 
     cop = float(data.get('cop', 3.5))
     hours = float(data.get('hours', 2000.0))
@@ -44,6 +47,10 @@ def calculate():
     dist_list = [float(r['dist_to_collector']) for r in rooms]
     t_below_list = [float(r['t_below']) for r in rooms] 
     
+    # YENİ: Aktif Alan (F2) ve Havalandırma (F3) listeleri
+    ventilation_list = [float(r['ventilation']) for r in rooms]
+    active_area_list = [float(r['active_area']) for r in rooms]
+    
     ext_wall_len_list = [float(r['ext_wall_len']) for r in rooms]
     room_height_list = [float(r['room_height']) for r in rooms]
     window_area_list = [float(r['window_area']) for r in rooms]
@@ -51,15 +58,15 @@ def calculate():
     u_window_list = [float(r['u_window']) for r in rooms]
 
     try:
-        # nargout=22 oldu (sys_t_mean eklendi)
-        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean = eng.floor_heating_model(
+        # nargout=24 oldu (t_dew_arr ve rad_ratio_arr eklendi)
+        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean = eng.floor_heating_model(
             t_water, matlab.double(t_below_list), r_insulation, dist_main, d_out_main, cop, hours, co2_factor, 
-            t_out_real, wind_factor,
+            t_out_real, wind_factor, rh, altitude, matlab.double(ventilation_list), matlab.double(active_area_list), # Yeni parametreler
             matlab.double(t_room_list), matlab.double(spacing_list),
             matlab.double(r_cover_list), matlab.double(area_list), matlab.double(dist_list),
             matlab.double(ext_wall_len_list), matlab.double(room_height_list), matlab.double(window_area_list),
             matlab.double(u_wall_list), matlab.double(u_window_list),
-            nargout=22
+            nargout=24
         )
         
         def to_list(matlab_val):
@@ -83,14 +90,16 @@ def calculate():
             "fin_eff": to_list(fin_eff_arr), 
             "reynolds": to_list(re_arr),     
             "coverage_ratio": to_list(coverage_ratio_arr), 
-            "surplus_watt": to_list(surplus_watt_arr),     
+            "surplus_watt": to_list(surplus_watt_arr),
+            "t_dew": to_list(t_dew_arr),         # YENİ
+            "rad_ratio": to_list(rad_ratio_arr), # YENİ
             "sys_total_heat": sys_total_heat,
             "sys_max_pressure": sys_max_pressure,
             "main_p_drop": main_p_drop,
             "sys_pump_power": sys_pump_power,
             "sys_total_energy": sys_total_energy,
             "sys_total_co2": sys_total_co2,
-            "sys_t_mean": sys_t_mean # YENİ
+            "sys_t_mean": sys_t_mean 
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
