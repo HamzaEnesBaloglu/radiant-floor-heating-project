@@ -29,10 +29,10 @@
         button.primary-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.3s; margin-top: 10px; font-size: 15px;}
         button.add-btn { background: white; color: var(--primary); border: 2px dashed var(--primary); width: 100%; padding: 10px; cursor: pointer; border-radius: 4px; font-weight: bold; margin-bottom: 15px;}
         
-        .summary-dashboard { display: flex; gap: 15px; background: #1e1e1e; color: white; padding: 20px; border-radius: 8px; flex-wrap: wrap;}
-        .dash-box { flex: 1; min-width: 100px; text-align: center; }
-        .dash-title { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;}
-        .dash-val { font-size: 24px; font-weight: bold; color: #4fc3f7; margin-top: 5px;}
+        .summary-dashboard { display: flex; gap: 10px; background: #1e1e1e; color: white; padding: 15px; border-radius: 8px; flex-wrap: wrap;}
+        .dash-box { flex: 1; min-width: 90px; text-align: center; }
+        .dash-title { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;}
+        .dash-val { font-size: 20px; font-weight: bold; color: #4fc3f7; margin-top: 5px;}
         .dash-val.eco { color: #81c784; }
         
         .result-room-card { border: 1px solid var(--border); padding: 15px; border-radius: 6px; background: #fff; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;}
@@ -46,7 +46,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver | BES Application</h1>
-        <p>Akademik Termodinamik, EN 1264 ve F1/F2 Kalibrasyonu (v0.11.0)</p>
+        <p>Akademik Termodinamik, EN 1264 ve Sistem Kalibrasyonu (v0.12.0)</p>
     </div>
 
     <div class="container">
@@ -55,7 +55,7 @@
             <div class="global-settings">
                 <div class="input-row">
                     <div class="input-group">
-                        <label>İklim Bölgesi (Deniz Seviyesi)</label>
+                        <label>İklim Bölgesi</label>
                         <select id="sys_climate">
                             <option value="3.0">Bölge 1: Sıcak (Örn: Antalya)</option>
                             <option value="-3.0">Bölge 2: Ilıman (Örn: İstanbul)</option>
@@ -63,13 +63,15 @@
                             <option value="-15.0">Bölge 4: Sert (Örn: Erzurum)</option>
                         </select>
                     </div>
+                    <div class="input-group"><label>Rakım (m)</label><input type="number" id="sys_altitude" value="900" step="50"></div>
+                    <div class="input-group"><label>Bağıl Nem (%)</label><input type="number" id="sys_rh" value="50" step="5"></div>
                     <div class="input-group">
-                        <label title="Rakım F1 Konveksiyon çarpanını etkiler">Rakım (m) ℹ️</label>
-                        <input type="number" id="sys_altitude" value="900" step="50">
-                    </div>
-                    <div class="input-group">
-                        <label title="Çiğlenme Noktası Hesabı İçin">Bağıl Nem (%) ℹ️</label>
-                        <input type="number" id="sys_rh" value="50" step="5" max="100" min="0">
+                        <label>Rüzgar Maruziyeti</label>
+                        <select id="sys_wind">
+                            <option value="0.9">Korunaklı (Şehir İçi)</option>
+                            <option value="1.0" selected>Normal (Banliyö)</option>
+                            <option value="1.15">Açık Arazi (+15% Kayıp)</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -88,21 +90,22 @@
                         <label>Tüm Odalar İçin Alt Kat Sıc. (°C)</label>
                         <input type="number" id="sys_t_below_global" value="20" step="1">
                     </div>
-                    <div class="input-group">
-                        <label>Rüzgar Maruziyeti</label>
-                        <select id="sys_wind">
-                            <option value="0.9">Korunaklı (Şehir İçi)</option>
-                            <option value="1.0" selected>Normal (Banliyö)</option>
-                            <option value="1.15">Açık Arazi (+15% Kayıp)</option>
-                        </select>
-                    </div>
                 </div>
             </div>
 
-            <h3>Kazan & Ana Hat Ayarları</h3>
+            <h3>Kazan, Ana Hat & Glikol Ayarları</h3>
             <div class="global-settings">
                 <div class="input-row">
                     <div class="input-group"><label>Kazan Su Sıc. (°C)</label><input type="number" id="sys_t_water" value="40" step="1"></div>
+                    <div class="input-group">
+                        <label style="color:var(--academic);">Antifriz / Glikol Oranı</label>
+                        <select id="sys_glycol" style="border-color:var(--academic);">
+                            <option value="0" selected>%0 (Saf Su)</option>
+                            <option value="10">%10 Glikol</option>
+                            <option value="20">%20 Glikol</option>
+                            <option value="30">%30 Glikol</option>
+                        </select>
+                    </div>
                     <div class="input-group"><label>Alt Yalıtım (R)</label><input type="number" id="sys_r_ins" value="0.85" step="0.05"></div>
                 </div>
                 <div class="input-row">
@@ -133,28 +136,32 @@
             <h3>Tüm Ev Özeti <span style="font-size: 12px; color:var(--info);">🛠️ Şantiye Dashboard</span></h3>
             <div class="summary-dashboard">
                 <div class="dash-box">
-                    <div class="dash-title" style="color: #ccc;" title="Tasarım Sıcaklığı">Dış Sıc. ℹ️</div>
+                    <div class="dash-title">Dış Sıc.</div>
                     <div class="dash-val" id="res_t_out" style="color: #fff;">-- °C</div>
                 </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
-                    <div class="dash-title" title="Ortalama Su Sıcaklığı (T_mean)">T_mean ℹ️</div>
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
+                    <div class="dash-title">T_mean</div>
                     <div class="dash-val" id="res_t_mean" style="color: #ffb74d;">-- °C</div>
                 </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
-                    <div class="dash-title" title="Toplam Kollektör Port İhtiyacı">Kollektör</div>
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
+                    <div class="dash-title">Kollektör</div>
                     <div class="dash-val" id="res_manifold" style="color: #64b5f6;">-- Ağız</div>
                 </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
-                    <div class="dash-title">Pompa Gücü</div>
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
+                    <div class="dash-title">Pompa</div>
                     <div class="dash-val" id="res_pump_w" style="color: #ff9800;">-- W</div>
                 </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
-                    <div class="dash-title">Yıllık Tüketim</div>
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
+                    <div class="dash-title">Tüketim</div>
                     <div class="dash-val eco" id="res_sys_energy">-- kWh</div>
                 </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:15px;">
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
                     <div class="dash-title">Karbon İzi</div>
                     <div class="dash-val eco" id="res_sys_co2" style="color: #f44336;">-- kg</div>
+                </div>
+                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
+                    <div class="dash-title" style="color:var(--academic);">CO2 Azaltma</div>
+                    <div class="dash-val" id="res_co2_red" style="color: var(--academic);">-- %</div>
                 </div>
             </div>
 
@@ -286,16 +293,17 @@
 
             const data = {
                 t_water: parseFloat(document.getElementById('sys_t_water').value),
+                glycol: parseFloat(document.getElementById('sys_glycol').value), // YENİ
                 r_insulation: parseFloat(document.getElementById('sys_r_ins').value),
                 dist_main: parseFloat(document.getElementById('sys_dist_main').value),
                 d_out_main: parseFloat(document.getElementById('sys_d_out_main').value),
                 climate_zone: base_temp,
                 altitude: altitude,
-                rh: parseFloat(document.getElementById('sys_rh').value), // YENİ
+                rh: parseFloat(document.getElementById('sys_rh').value),
                 wind_factor: parseFloat(document.getElementById('sys_wind').value),
-                cop: parseFloat(document.getElementById('eco_cop').value), // Eko Korundu!
-                hours: parseFloat(document.getElementById('eco_hours').value), // Eko Korundu!
-                co2_factor: parseFloat(document.getElementById('eco_co2').value), // Eko Korundu!
+                cop: parseFloat(document.getElementById('eco_cop').value),
+                hours: parseFloat(document.getElementById('eco_hours').value),
+                co2_factor: parseFloat(document.getElementById('eco_co2').value),
                 rooms: []
             };
 
@@ -328,8 +336,8 @@
                     r_cover: parseFloat(card.querySelector('.r-cover').value),
                     dist_to_collector: parseFloat(card.querySelector('.r-dist').value),
                     t_below: room_t_below, 
-                    active_area: parseFloat(card.querySelector('.r-active-area').value), // YENİ
-                    ventilation: parseFloat(card.querySelector('.r-ventilation').value), // YENİ
+                    active_area: parseFloat(card.querySelector('.r-active-area').value),
+                    ventilation: parseFloat(card.querySelector('.r-ventilation').value),
                     ext_wall_len: parseFloat(card.querySelector('.r-ext-wall').value),
                     room_height: parseFloat(card.querySelector('.r-height').value),
                     window_area: parseFloat(card.querySelector('.r-window').value),
@@ -356,6 +364,7 @@
                 document.getElementById('res_pump_w').innerText = result.sys_pump_power.toFixed(1) + " W";
                 document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
                 document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg";
+                document.getElementById('res_co2_red').innerText = result.sys_co2_reduction.toFixed(1) + " %"; // YENİ
 
                 const resContainer = document.getElementById('results-container');
                 resContainer.innerHTML = '';
@@ -400,7 +409,7 @@
                     else if (reValue < 4000) { reText = `Geçiş (Re:${reValue.toFixed(0)})`; reColor = "var(--warning)"; } 
                     else { reText = `Türbülans (Re:${reValue.toFixed(0)})`; reColor = "var(--success)"; }
 
-                    // KUSURSUZ 3x4 GRID DİZİLİMİ (Hiçbir Veri Silinmedi!)
+                    // KUSURSUZ 3 SATIR x 4 SÜTUN GRID 
                     resContainer.innerHTML += `
                         <div class="result-room-card" style="${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
                             <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">

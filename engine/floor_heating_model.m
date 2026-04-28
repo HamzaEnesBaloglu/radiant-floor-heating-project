@@ -1,5 +1,5 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.11.0)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.12.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -18,13 +18,18 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     coverage_ratio_arr = zeros(1, num_rooms);
     surplus_watt_arr = zeros(1, num_rooms);
     
-    % YENİ: Çiğlenme Noktası ve Radyant Oran Dizileri
+    % Çiğlenme Noktası ve Radyant Oran Dizileri
     t_dew_arr = zeros(1, num_rooms);
     rad_ratio_arr = zeros(1, num_rooms);
 
     k_concrete = 1.4; t_concrete = 0.05;
     r_concrete = t_concrete / k_concrete; 
-    rho = 992; cp = 4179; mu = 0.000653; 
+    
+    % YENİ: DİNAMİK SU VE GLİKOL ÖZELLİKLERİ (Ampirik Yaklaşımlar)
+    % %0 Glikol (Saf Su) -> rho: 992, cp: 4179, mu: 0.000653
+    rho = 992 + (glycol_percent * 0.44); 
+    cp = 4179 - (glycol_percent * 5.79);
+    mu = 0.000653 * (1 + (glycol_percent * 0.04));
     
     delta_T_water = 5; 
     t_mean_water = t_water - (delta_T_water / 2); 
@@ -38,7 +43,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     total_vol_flow = 0; 
     max_loop_length = 100; 
     
-    % YENİ: F1 Rakım Düzeltmesi (Barometrik Basınç Oranı Kökü)
+    % F1 Rakım Düzeltmesi
     p_ratio = (1 - 2.25577e-5 * altitude)^5.25588;
     F1 = sqrt(p_ratio);
 
@@ -50,14 +55,14 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         dist_to_coll = dist_arr(i); 
         t_below = t_below_arr(i); 
 
-        % YENİ: Çiğlenme Noktası (Magnus Formülü)
+        % Çiğlenme Noktası (Magnus Formülü)
         alpha = (17.625 * t_room) / (243.04 + t_room) + log(rh/100);
         t_dew = (243.04 * alpha) / (17.625 - alpha);
         t_dew_arr(i) = t_dew;
 
-        % YENİ: F2 (Aktif Alan Oranı)
+        % F2 (Aktif Alan Oranı)
         F2 = active_area_arr(i) / 100;
-        active_room_area = room_area * F2; % Sadece boru döşenen net alan
+        active_room_area = room_area * F2; 
 
         % 1. ISI KAYBI HESABI
         ext_wall_len = ext_wall_len_arr(i);
@@ -71,7 +76,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         q_loss_watt = (a_wall_net * u_wall * wind_factor + window_area * u_window * wind_factor) * (t_room - t_out);
         q_loss_arr(i) = max(0, q_loss_watt); 
 
-        % YENİ: Dinamik Isı Transfer Katsayıları ve F3 (Hibrit Havalandırma)
+        % Dinamik Isı Transfer Katsayıları ve F3 (Hibrit Havalandırma)
         F3 = ventilation_arr(i);
         h_rad = 5.5;
         h_conv = 5.3 * F1 * F3;
@@ -98,7 +103,6 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         q_total = q_flux + q_down; 
         q_total_arr(i) = q_total;
 
-        % DİKKAT: Isı kapasitesi F2 (Aktif Alan) üzerinden hesaplanıyor!
         total_heat_supplied_watt = q_flux * active_room_area;
         sys_total_heat = sys_total_heat + (q_total * active_room_area); 
         
@@ -110,13 +114,14 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
             coverage_ratio_arr(i) = 100; 
         end
 
-        % 4. ZONLAMA VE DEBİ (Boru metrajı Aktif Alana göre belirlenir)
+        % 4. ZONLAMA VE DEBİ
         total_pipe_length = (active_room_area / spacing) + (2 * dist_to_coll);
         num_zones = ceil(max(total_pipe_length, 1e-5) / max_loop_length);
         num_zones_arr(i) = num_zones;
         len_per_zone = total_pipe_length / num_zones;
         len_per_zone_arr(i) = len_per_zone;
 
+        % Dinamik cp ve rho burada işin içine girer:
         mass_flow = (q_total * active_room_area) / (cp * delta_T_water); 
         vol_flow = mass_flow / rho; 
         total_vol_flow = total_vol_flow + vol_flow; 
@@ -165,4 +170,11 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     pump_energy_kwh = (sys_pump_power / 1000) * hours;
     sys_total_energy = sum(room_energy_arr) + pump_energy_kwh;
     sys_total_co2 = sys_total_energy * co2_factor;
+
+    % YENİ: CO2 AZALTMA YÜZDESİ (Referans Değer 1.25 kg/kWh)
+    reference_co2_factor = 1.25;
+    sys_co2_reduction = (1 - (co2_factor / reference_co2_factor)) * 100;
+    if sys_co2_reduction < 0
+        sys_co2_reduction = 0;
+    end
 end
