@@ -15,10 +15,66 @@ try:
 except Exception as e:
     print(f"MATLAB Engine başlatılamadı: {e}")
 
+# --- INPUT VALIDATION HELPER ---
+def validate_inputs(data):
+    errors = []
+
+    def rng(val, mn, mx, label):
+        try:
+            v = float(val)
+            if v < mn or v > mx:
+                errors.append(f"{label}: {v} değeri [{mn}, {mx}] aralığı dışında.")
+        except (TypeError, ValueError):
+            errors.append(f"{label}: geçerli bir sayı değil.")
+
+    rng(data.get('t_water'),      25,   60,   'Kazan su sıcaklığı (°C)')
+    rng(data.get('r_insulation'), 0.5,  5.0,  'Alt yalıtım R-değeri')
+    rng(data.get('dist_main'),    1,    50,   'Kazan→Kollektör mesafesi (m)')
+    rng(data.get('altitude'),     0,    3000, 'Rakım (m)')
+    rng(data.get('rh'),           10,   100,  'Bağıl nem (%)')
+    rng(data.get('cop'),          1.0,  7.0,  'COP')
+    rng(data.get('hours'),        500,  8760, 'Yıllık çalışma saati')
+    rng(data.get('co2_factor'),   0.05, 2.0,  'CO2 faktörü (kg/kWh)')
+
+    rooms = data.get('rooms', [])
+    for i, room in enumerate(rooms):
+        name = f"Oda {i+1}"
+        rng(room.get('room_area'),    2,    200,  f'{name} — Brüt alan (m²)')
+        rng(room.get('t_room'),       15,   30,   f'{name} — İç sıcaklık (°C)')
+        rng(room.get('spacing'),      0.05, 0.30, f'{name} — Boru aralığı (m)')
+        rng(room.get('dist_to_collector'), 1, 30, f'{name} — Kollektöre mesafe (m)')
+        rng(room.get('active_area'),  10,   100,  f'{name} — Aktif alan (%)')
+        rng(room.get('ext_wall_len'), 0,    30,   f'{name} — Cephe uzunluğu (m)')
+        rng(room.get('room_height'),  2.2,  5.0,  f'{name} — Oda yüksekliği (m)')
+        rng(room.get('window_area'),  0,    50,   f'{name} — Cam alanı (m²)')
+
+        # Çapraz: cam alanı > duvar brüt alanı
+        try:
+            gross_wall = float(room.get('ext_wall_len', 0)) * float(room.get('room_height', 0))
+            window = float(room.get('window_area', 0))
+            if gross_wall > 0 and window > gross_wall:
+                errors.append(f"{name} — Cam alanı ({window}m²), duvar brüt alanından ({gross_wall:.1f}m²) büyük olamaz.")
+        except (TypeError, ValueError):
+            pass
+
+        # Çapraz: iç sıcaklık >= kazan suyu
+        try:
+            if float(room.get('t_room', 0)) >= float(data.get('t_water', 999)):
+                errors.append(f"{name} — İç sıcaklık, kazan suyu sıcaklığına eşit veya büyük: ısıtma yapılamaz.")
+        except (TypeError, ValueError):
+            pass
+
+    return errors
+
 @app.route('/api/calculate', methods=['POST'])
 def calculate():
     data = request.json
     
+    # Backend validation
+    validation_errors = validate_inputs(data)
+    if validation_errors:
+        return jsonify({"status": "error", "message": " | ".join(validation_errors)}), 400
+
     t_water = float(data.get('t_water', 40.0))
     r_insulation = float(data.get('r_insulation', 0.85))
     dist_main = float(data.get('dist_main', 5.0))

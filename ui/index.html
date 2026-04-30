@@ -40,6 +40,16 @@
         .res-item.eco-item { background: #e8f5e9; }
         .res-item span { display: block; font-size: 11px; color: #666; }
         .res-item strong { font-size: 14px; color: var(--primary); }
+
+        /* --- HATA & UYARI SİSTEMİ --- */
+        .field-error { color: #d32f2f; font-size: 10px; font-weight: 600; margin-top: 3px; display: none; }
+        .field-error.visible { display: block; }
+        input.input-invalid { border-color: #d32f2f !important; background: #fff8f8; }
+        input.input-warn { border-color: #ff9800 !important; background: #fffbf0; }
+        #global-error-banner { display: none; background: #ffebee; border: 1px solid #ef9a9a; border-left: 4px solid #d32f2f; border-radius: 6px; padding: 12px 16px; margin-bottom: 15px; }
+        #global-error-banner.visible { display: block; }
+        #global-error-banner ul { margin: 5px 0 0 0; padding-left: 18px; font-size: 12px; color: #b71c1c; }
+        #global-error-banner .banner-title { font-weight: bold; color: #c62828; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -129,6 +139,10 @@
             <div id="room-container"></div>
             
             <button class="add-btn" onclick="addRoom()">+ Yeni Oda Ekle</button>
+            <div id="global-error-banner">
+                <div class="banner-title">⛔ Hesaplama başlatılamıyor — lütfen hataları düzeltin:</div>
+                <ul id="global-error-list"></ul>
+            </div>
             <button class="primary-btn" onclick="runSimulation()">Tüm Sistemi Analiz Et</button>
         </div>
 
@@ -174,18 +188,17 @@
 
     <script>
         let roomCount = 0;
-        
-        window.onload = () => { 
-            addRoom("Büyük Salon", 45, 4, "living"); 
-            addRoom("Banyo", 15, 8, "wet"); 
-            toggleBuildingType(); 
+
+        window.onload = () => {
+            addRoom("Büyük Salon", 45, 4, "living");
+            addRoom("Banyo", 15, 8, "wet");
+            toggleBuildingType();
         };
 
         function toggleBuildingType() {
             const bldType = document.getElementById('sys_bld_type').value;
             const globalTBelowGroup = document.getElementById('global_t_below_group');
             const roomFloorSelects = document.querySelectorAll('.room-floor-group');
-
             if (bldType === 'apartment') {
                 globalTBelowGroup.style.display = 'block';
                 roomFloorSelects.forEach(el => el.style.display = 'none');
@@ -195,23 +208,207 @@
             }
         }
 
+        // ============================================================
+        // VALIDATION CORE
+        // ============================================================
+
+        // Bir input'a inline hata bağla; her input için bir kez çağrılır
+        function attachValidator(inputEl, validatorFn) {
+            const errorEl = inputEl.nextElementSibling;
+            const validate = () => {
+                const result = validatorFn(parseFloat(inputEl.value), inputEl);
+                if (!result) {
+                    inputEl.classList.remove('input-invalid', 'input-warn');
+                    if (errorEl && errorEl.classList.contains('field-error')) {
+                        errorEl.classList.remove('visible');
+                    }
+                } else {
+                    inputEl.classList.toggle('input-invalid', result.level === 'error');
+                    inputEl.classList.toggle('input-warn',   result.level === 'warn');
+                    if (errorEl && errorEl.classList.contains('field-error')) {
+                        errorEl.textContent = result.msg;
+                        errorEl.classList.add('visible');
+                    }
+                }
+            };
+            inputEl.addEventListener('input', validate);
+            inputEl.addEventListener('blur',  validate);
+        }
+
+        // Global inputlara validator bağla (sayfa yüklenince)
+        function bindGlobalValidators() {
+            bindV('sys_t_water',  v => rangeCk(v, 25, 60,  '°C', 'Kazan suyu'));
+            bindV('sys_altitude', v => rangeCk(v,  0, 3000, 'm',  'Rakım'));
+            bindV('sys_rh',       v => rangeCk(v, 10, 100,  '%',  'Bağıl nem'));
+            bindV('sys_r_ins',    v => rangeCk(v, 0.5, 5.0, '',   'Yalıtım R-değeri'));
+            bindV('sys_dist_main',v => rangeCk(v,  1, 50,   'm',  'Ana hat mesafesi'));
+            bindV('eco_cop',      v => rangeCk(v, 1.0, 7.0, '',   'COP'));
+            bindV('eco_hours',    v => rangeCk(v, 500, 8760, 'sa', 'Çalışma saati'));
+            bindV('eco_co2',      v => rangeCk(v, 0.05, 2.0, 'kg/kWh', 'CO2 faktörü'));
+        }
+
+        function bindV(id, fn) {
+            const el = document.getElementById(id);
+            if (el) attachValidator(el, fn);
+        }
+
+        // Genel aralık kontrolü — hata nesnesi veya null döner
+        function rangeCk(v, min, max, unit, label) {
+            if (isNaN(v))        return { level: 'error', msg: `${label}: geçerli bir sayı girin.` };
+            if (v < min)         return { level: 'error', msg: `${label}: en az ${min}${unit} olmalı.` };
+            if (v > max)         return { level: 'error', msg: `${label}: en fazla ${max}${unit} olabilir.` };
+            return null;
+        }
+
+        // Oda kartı inputlarına validator bağla
+        function bindRoomValidators(card) {
+            const q = cls => card.querySelector(cls);
+
+            attachValidator(q('.r-area'),     v => rangeCk(v, 2, 200, 'm²', 'Brüt alan'));
+            attachValidator(q('.r-temp'),     v => rangeCk(v, 15, 30, '°C', 'İç sıcaklık'));
+            attachValidator(q('.r-spacing'),  v => rangeCk(v, 0.05, 0.30, 'm', 'Boru aralığı'));
+            attachValidator(q('.r-dist'),     v => rangeCk(v, 1, 30, 'm', 'Kollektöre mesafe'));
+            attachValidator(q('.r-active-area'), v => rangeCk(v, 10, 100, '%', 'Aktif alan'));
+            attachValidator(q('.r-ext-wall'), v => rangeCk(v, 0, 30, 'm', 'Cephe uzunluğu'));
+            attachValidator(q('.r-height'),   v => rangeCk(v, 2.2, 5.0, 'm', 'Oda yüksekliği'));
+            attachValidator(q('.r-window'),   v => rangeCk(v, 0, 50, 'm²', 'Cam alanı'));
+
+            // Çapraz kontrol: cam alanı > duvar brüt alanı
+            const crossCheck = () => {
+                const wallLen = parseFloat(q('.r-ext-wall').value) || 0;
+                const height  = parseFloat(q('.r-height').value)   || 0;
+                const window  = parseFloat(q('.r-window').value)   || 0;
+                const winEl   = q('.r-window');
+                const errEl   = winEl.nextElementSibling;
+                const grossWall = wallLen * height;
+                if (window > grossWall && grossWall > 0) {
+                    winEl.classList.add('input-invalid');
+                    if (errEl && errEl.classList.contains('field-error')) {
+                        errEl.textContent = `Cam alanı (${window}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`;
+                        errEl.classList.add('visible');
+                    }
+                }
+            };
+            q('.r-ext-wall').addEventListener('input', crossCheck);
+            q('.r-height').addEventListener('input',   crossCheck);
+            q('.r-window').addEventListener('input',   crossCheck);
+
+            // Çapraz kontrol: aktif alan > brüt alan (mantıksal)
+            const activeCheck = () => {
+                const area       = parseFloat(q('.r-area').value)        || 0;
+                const activePerc = parseFloat(q('.r-active-area').value) || 0;
+                const activeEl   = q('.r-active-area');
+                const errEl      = activeEl.nextElementSibling;
+                // Aktif alan % zaten max=100 ama brüt alan ile oran absürd olabilir
+                if (activePerc > 100) {
+                    activeEl.classList.add('input-invalid');
+                    if (errEl && errEl.classList.contains('field-error')) {
+                        errEl.textContent = 'Aktif alan %100\'ü geçemez.';
+                        errEl.classList.add('visible');
+                    }
+                }
+            };
+            q('.r-active-area').addEventListener('input', activeCheck);
+        }
+
+        // ============================================================
+        // VALIDATION SUMMARY — "Analiz Et" öncesi tam tarama
+        // ============================================================
+        function validateAll() {
+            const errors = [];
+
+            // Global alanlar
+            const checks = [
+                ['sys_t_water',   25, 60,   '°C',      'Kazan su sıcaklığı'],
+                ['sys_altitude',   0, 3000,  'm',       'Rakım'],
+                ['sys_rh',        10, 100,   '%',       'Bağıl nem'],
+                ['sys_r_ins',    0.5, 5.0,   '',        'Alt yalıtım R-değeri'],
+                ['sys_dist_main',  1, 50,    'm',       'Kazan→Kollektör mesafesi'],
+                ['eco_cop',      1.0, 7.0,   '',        'COP'],
+                ['eco_hours',    500, 8760,  ' sa',     'Yıllık çalışma saati'],
+                ['eco_co2',     0.05, 2.0,   ' kg/kWh', 'CO2 faktörü'],
+            ];
+            checks.forEach(([id, min, max, unit, label]) => {
+                const v = parseFloat(document.getElementById(id).value);
+                const r = rangeCk(v, min, max, unit, label);
+                if (r) errors.push(`${label}: ${r.msg}`);
+            });
+
+            // Oda bazlı
+            const roomCards = document.querySelectorAll('.room-card');
+            roomCards.forEach((card, idx) => {
+                const name = card.querySelector('.r-name').value || `Oda ${idx + 1}`;
+                const q = cls => parseFloat(card.querySelector(cls).value);
+
+                const roomChecks = [
+                    [q('.r-area'),        2,    200,  'm²', 'Brüt alan'],
+                    [q('.r-temp'),       15,     30,  '°C', 'İç sıcaklık'],
+                    [q('.r-spacing'),  0.05,   0.30,  'm',  'Boru aralığı'],
+                    [q('.r-dist'),        1,     30,  'm',  'Kollektöre mesafe'],
+                    [q('.r-active-area'),10,    100,  '%',  'Aktif alan'],
+                    [q('.r-ext-wall'),    0,     30,  'm',  'Cephe uzunluğu'],
+                    [q('.r-height'),    2.2,    5.0,  'm',  'Oda yüksekliği'],
+                    [q('.r-window'),      0,     50,  'm²', 'Cam alanı'],
+                ];
+                roomChecks.forEach(([v, min, max, unit, label]) => {
+                    const r = rangeCk(v, min, max, unit, label);
+                    if (r) errors.push(`"${name}" — ${r.msg}`);
+                });
+
+                // Çapraz: cam > duvar brüt alanı
+                const grossWall = q('.r-ext-wall') * q('.r-height');
+                if (q('.r-window') > grossWall && grossWall > 0) {
+                    errors.push(`"${name}" — Cam alanı (${q('.r-window')}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`);
+                }
+
+                // Çapraz: iç sıcaklık > kazan suyu (ısıtma imkansız)
+                const t_water = parseFloat(document.getElementById('sys_t_water').value);
+                if (q('.r-temp') >= t_water) {
+                    errors.push(`"${name}" — İç sıcaklık (${q('.r-temp')}°C), kazan suyu sıcaklığına (${t_water}°C) eşit veya büyük: ısıtma yapılamaz.`);
+                }
+            });
+
+            const banner = document.getElementById('global-error-banner');
+            const list   = document.getElementById('global-error-list');
+            if (errors.length > 0) {
+                list.innerHTML = errors.map(e => `<li>${e}</li>`).join('');
+                banner.classList.add('visible');
+                banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                return false;
+            } else {
+                banner.classList.remove('visible');
+                return true;
+            }
+        }
+
+        // ============================================================
+        // ADD ROOM
+        // ============================================================
         function addRoom(defaultName = "", defaultArea = 20, defaultDist = 5, defaultType = "living") {
             roomCount++;
             const container = document.getElementById('room-container');
-            const bldType = document.getElementById('sys_bld_type').value;
+            const bldType   = document.getElementById('sys_bld_type').value;
             const displayStyle = (bldType === 'apartment') ? 'display: none;' : 'display: block;';
 
             let typeLiving = (defaultType === "living") ? "selected" : "";
-            let typeWet = (defaultType === "wet") ? "selected" : "";
-            let typeEdge = (defaultType === "edge") ? "selected" : "";
+            let typeWet    = (defaultType === "wet")    ? "selected" : "";
+            let typeEdge   = (defaultType === "edge")   ? "selected" : "";
 
             const roomHtml = `
                 <div class="room-card" id="room_${roomCount}">
                     <button class="remove-btn" onclick="removeRoom('room_${roomCount}')">X SİL</button>
                     <div class="input-row">
                         <div class="input-group"><label>Oda Adı</label><input type="text" class="r-name" value="${defaultName || 'Oda ' + roomCount}"></div>
-                        <div class="input-group"><label>Brüt Alan (m²)</label><input type="number" class="r-area" value="${defaultArea}"></div>
-                        <div class="input-group"><label>İç Sıcaklık (°C)</label><input type="number" class="r-temp" value="20"></div>
+                        <div class="input-group">
+                            <label>Brüt Alan (m²)</label>
+                            <input type="number" class="r-area" value="${defaultArea}">
+                            <div class="field-error"></div>
+                        </div>
+                        <div class="input-group">
+                            <label>İç Sıcaklık (°C)</label>
+                            <input type="number" class="r-temp" value="20">
+                            <div class="field-error"></div>
+                        </div>
                         <div class="input-group"><label style="color:#d81b60;">EN 1264 Tipi</label>
                             <select class="r-en-type" style="border-color:#d81b60;">
                                 <option value="29" ${typeLiving}>Oturma/Yaşam (Max 29°C)</option>
@@ -220,11 +417,15 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="loss-panel" style="background:#f3e5f5; border-color:#ce93d8;">
                         <div style="font-size:11px; font-weight:bold; color:var(--academic); margin-bottom:5px;">🔬 İleri Termodinamik Ayarları (F2, F3)</div>
                         <div class="input-row" style="margin-bottom:0;">
-                            <div class="input-group"><label title="Sabit mobilya vs düşülmüş aktif borulama alanı">Aktif Alan % (F2) ℹ️</label><input type="number" class="r-active-area" value="100" max="100" min="10"></div>
+                            <div class="input-group">
+                                <label title="Sabit mobilya vs düşülmüş aktif borulama alanı">Aktif Alan % (F2) ℹ️</label>
+                                <input type="number" class="r-active-area" value="100" max="100" min="10">
+                                <div class="field-error"></div>
+                            </div>
                             <div class="input-group"><label title="Mekanik havalandırma konveksiyonu artırır">Hibrit Panel (F3) ℹ️</label>
                                 <select class="r-ventilation">
                                     <option value="1.0" selected>Doğal (Yok)</option>
@@ -235,8 +436,16 @@
                     </div>
 
                     <div class="input-row" style="margin-top:10px;">
-                        <div class="input-group"><label>Kollektöre (m)</label><input type="number" class="r-dist" value="${defaultDist}"></div>
-                        <div class="input-group"><label>Boru Aralığı (m)</label><input type="number" class="r-spacing" value="0.15" step="0.05"></div>
+                        <div class="input-group">
+                            <label>Kollektöre (m)</label>
+                            <input type="number" class="r-dist" value="${defaultDist}">
+                            <div class="field-error"></div>
+                        </div>
+                        <div class="input-group">
+                            <label>Boru Aralığı (m)</label>
+                            <input type="number" class="r-spacing" value="0.15" step="0.05">
+                            <div class="field-error"></div>
+                        </div>
                         <div class="input-group"><label>Üst Zemin</label>
                             <select class="r-cover">
                                 <option value="0.05">Seramik</option>
@@ -254,13 +463,25 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="loss-panel">
                         <div style="font-size:11px; font-weight:bold; color:var(--primary); margin-bottom:5px;">🔍 Dış Cephe (Isı Kaybı) Parametreleri</div>
                         <div class="input-row">
-                            <div class="input-group"><label>Cephe Uz. (m)</label><input type="number" class="r-ext-wall" value="4"></div>
-                            <div class="input-group"><label>Yükseklik (m)</label><input type="number" class="r-height" value="2.8"></div>
-                            <div class="input-group"><label>Cam Alanı (m²)</label><input type="number" class="r-window" value="2"></div>
+                            <div class="input-group">
+                                <label>Cephe Uz. (m)</label>
+                                <input type="number" class="r-ext-wall" value="4">
+                                <div class="field-error"></div>
+                            </div>
+                            <div class="input-group">
+                                <label>Yükseklik (m)</label>
+                                <input type="number" class="r-height" value="2.8">
+                                <div class="field-error"></div>
+                            </div>
+                            <div class="input-group">
+                                <label>Cam Alanı (m²)</label>
+                                <input type="number" class="r-window" value="2">
+                                <div class="field-error"></div>
+                            </div>
                         </div>
                         <div class="input-row" style="margin-bottom:0;">
                             <div class="input-group"><label>Duvar Yalıtımı</label>
@@ -282,67 +503,98 @@
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', roomHtml);
+
+            // Yeni eklenen kartın inputlarına validator bağla
+            const newCard = document.getElementById(`room_${roomCount}`);
+            bindRoomValidators(newCard);
         }
 
         function removeRoom(id) { document.getElementById(id).remove(); }
 
+        // ============================================================
+        // GLOBAL INPUT VALIDATORS — sayfa yüklenince bağla
+        // ============================================================
+
+        // Global inputlar için field-error div'leri HTML'de zaten mevcut,
+        // ama dinamik eklenmediğinden burada programatik ekliyoruz
+        function ensureErrorDiv(id) {
+            const el  = document.getElementById(id);
+            if (!el) return;
+            if (!el.nextElementSibling || !el.nextElementSibling.classList.contains('field-error')) {
+                const div = document.createElement('div');
+                div.className = 'field-error';
+                el.after(div);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            ['sys_t_water','sys_altitude','sys_rh','sys_r_ins',
+             'sys_dist_main','eco_cop','eco_hours','eco_co2'].forEach(ensureErrorDiv);
+            bindGlobalValidators();
+        });
+
+        // ============================================================
+        // RUN SIMULATION
+        // ============================================================
         async function runSimulation() {
+            // Önce validasyon — hata varsa dur
+            if (!validateAll()) return;
+
             const base_temp = parseFloat(document.getElementById('sys_climate').value);
-            const altitude = parseFloat(document.getElementById('sys_altitude').value);
+            const altitude  = parseFloat(document.getElementById('sys_altitude').value);
             const calculated_t_out = base_temp - (altitude * 0.0065);
 
             const data = {
-                t_water: parseFloat(document.getElementById('sys_t_water').value),
-                glycol: parseFloat(document.getElementById('sys_glycol').value), // YENİ
+                t_water:      parseFloat(document.getElementById('sys_t_water').value),
+                glycol:       parseFloat(document.getElementById('sys_glycol').value),
                 r_insulation: parseFloat(document.getElementById('sys_r_ins').value),
-                dist_main: parseFloat(document.getElementById('sys_dist_main').value),
-                d_out_main: parseFloat(document.getElementById('sys_d_out_main').value),
+                dist_main:    parseFloat(document.getElementById('sys_dist_main').value),
+                d_out_main:   parseFloat(document.getElementById('sys_d_out_main').value),
                 climate_zone: base_temp,
-                altitude: altitude,
-                rh: parseFloat(document.getElementById('sys_rh').value),
-                wind_factor: parseFloat(document.getElementById('sys_wind').value),
-                cop: parseFloat(document.getElementById('eco_cop').value),
-                hours: parseFloat(document.getElementById('eco_hours').value),
-                co2_factor: parseFloat(document.getElementById('eco_co2').value),
+                altitude:     altitude,
+                rh:           parseFloat(document.getElementById('sys_rh').value),
+                wind_factor:  parseFloat(document.getElementById('sys_wind').value),
+                cop:          parseFloat(document.getElementById('eco_cop').value),
+                hours:        parseFloat(document.getElementById('eco_hours').value),
+                co2_factor:   parseFloat(document.getElementById('eco_co2').value),
                 rooms: []
             };
 
-            const roomCards = document.querySelectorAll('.room-card');
-            const roomNames = [];
-            const en1264Limits = []; 
-            
-            const bldType = document.getElementById('sys_bld_type').value;
+            const roomCards  = document.querySelectorAll('.room-card');
+            const roomNames  = [];
+            const en1264Limits = [];
+            const bldType        = document.getElementById('sys_bld_type').value;
             const global_t_below = parseFloat(document.getElementById('sys_t_below_global').value);
-            
+
             roomCards.forEach(card => {
                 roomNames.push(card.querySelector('.r-name').value);
-                en1264Limits.push(parseFloat(card.querySelector('.r-en-type').value)); 
+                en1264Limits.push(parseFloat(card.querySelector('.r-en-type').value));
 
-                let room_t_below = 20; 
+                let room_t_below = 20;
                 if (bldType === 'apartment') {
                     room_t_below = global_t_below;
                 } else {
-                    let floor_type = card.querySelector('.r-floor').value;
-                    if (floor_type === "ground") room_t_below = 10; 
-                    if (floor_type === "garage") room_t_below = 5;  
-                    if (floor_type === "exposed") room_t_below = calculated_t_out; 
-                    if (floor_type === "heated") room_t_below = 20; 
+                    const floor_type = card.querySelector('.r-floor').value;
+                    if (floor_type === "ground")  room_t_below = 10;
+                    if (floor_type === "garage")  room_t_below = 5;
+                    if (floor_type === "exposed") room_t_below = calculated_t_out;
+                    if (floor_type === "heated")  room_t_below = 20;
                 }
 
                 data.rooms.push({
-                    room_area: parseFloat(card.querySelector('.r-area').value),
-                    t_room: parseFloat(card.querySelector('.r-temp').value),
-                    spacing: parseFloat(card.querySelector('.r-spacing').value),
-                    r_cover: parseFloat(card.querySelector('.r-cover').value),
-                    dist_to_collector: parseFloat(card.querySelector('.r-dist').value),
-                    t_below: room_t_below, 
-                    active_area: parseFloat(card.querySelector('.r-active-area').value),
-                    ventilation: parseFloat(card.querySelector('.r-ventilation').value),
-                    ext_wall_len: parseFloat(card.querySelector('.r-ext-wall').value),
-                    room_height: parseFloat(card.querySelector('.r-height').value),
-                    window_area: parseFloat(card.querySelector('.r-window').value),
-                    u_wall: parseFloat(card.querySelector('.r-u-wall').value),
-                    u_window: parseFloat(card.querySelector('.r-u-window').value)
+                    room_area:          parseFloat(card.querySelector('.r-area').value),
+                    t_room:             parseFloat(card.querySelector('.r-temp').value),
+                    spacing:            parseFloat(card.querySelector('.r-spacing').value),
+                    r_cover:            parseFloat(card.querySelector('.r-cover').value),
+                    dist_to_collector:  parseFloat(card.querySelector('.r-dist').value),
+                    t_below:            room_t_below,
+                    active_area:        parseFloat(card.querySelector('.r-active-area').value),
+                    ventilation:        parseFloat(card.querySelector('.r-ventilation').value),
+                    ext_wall_len:       parseFloat(card.querySelector('.r-ext-wall').value),
+                    room_height:        parseFloat(card.querySelector('.r-height').value),
+                    window_area:        parseFloat(card.querySelector('.r-window').value),
+                    u_wall:             parseFloat(card.querySelector('.r-u-wall').value),
+                    u_window:           parseFloat(card.querySelector('.r-u-window').value)
                 });
             });
 
@@ -356,80 +608,77 @@
                 });
                 const result = await response.json();
 
+                if (result.status === 'error') {
+                    alert('Sunucu hatası: ' + result.message);
+                    return;
+                }
+
                 const totalManifoldPorts = result.num_zones.reduce((a, b) => a + b, 0);
 
-                document.getElementById('res_t_out').innerText = result.calculated_t_out.toFixed(1) + " °C";
-                document.getElementById('res_t_mean').innerText = result.sys_t_mean.toFixed(1) + " °C";
+                document.getElementById('res_t_out').innerText    = result.calculated_t_out.toFixed(1) + " °C";
+                document.getElementById('res_t_mean').innerText   = result.sys_t_mean.toFixed(1) + " °C";
                 document.getElementById('res_manifold').innerText = totalManifoldPorts + " Ağız";
-                document.getElementById('res_pump_w').innerText = result.sys_pump_power.toFixed(1) + " W";
+                document.getElementById('res_pump_w').innerText   = result.sys_pump_power.toFixed(1) + " W";
                 document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
-                document.getElementById('res_sys_co2').innerText = result.sys_total_co2.toFixed(0) + " kg";
-                document.getElementById('res_co2_red').innerText = result.sys_co2_reduction.toFixed(1) + " %"; // YENİ
+                document.getElementById('res_sys_co2').innerText  = result.sys_total_co2.toFixed(0) + " kg";
+                document.getElementById('res_co2_red').innerText  = result.sys_co2_reduction.toFixed(1) + " %";
 
                 const resContainer = document.getElementById('results-container');
                 resContainer.innerHTML = '';
-
-                let maxDropIdx = result.p_drop.indexOf(Math.max(...result.p_drop)); 
+                let maxDropIdx = result.p_drop.indexOf(Math.max(...result.p_drop));
 
                 for (let i = 0; i < result.q_total.length; i++) {
                     const supplied_heat = result.q_flux[i] * (data.rooms[i].room_area * data.rooms[i].active_area / 100);
-                    const heat_loss = result.q_loss[i]; 
-                    
-                    const isSufficient = supplied_heat >= heat_loss;
-                    const statusTag = isSufficient 
-                        ? `<span style="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">✅ YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>` 
+                    const heat_loss     = result.q_loss[i];
+                    const isSufficient  = supplied_heat >= heat_loss;
+
+                    const statusTag = isSufficient
+                        ? `<span style="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">✅ YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>`
                         : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${result.surplus_watt[i].toFixed(0)} W)</span>`;
 
-                    const isCritical = (i === maxDropIdx);
+                    const isCritical  = (i === maxDropIdx);
                     const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
-                    
                     const multiZoneTag = (result.num_zones[i] > 1) ? `<span style="color:white; background:var(--info); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">ÇOKLU ZON (${result.num_zones[i]} Hat)</span>` : '';
 
-                    let t_surf = result.t_surf[i];
-                    let t_dew = result.t_dew[i];
-                    let limit = en1264Limits[i];
-                    let en1264Tag = "";
+                    let t_surf       = result.t_surf[i];
+                    let t_dew        = result.t_dew[i];
+                    let limit        = en1264Limits[i];
+                    let en1264Tag    = "";
                     let t_surf_color = "var(--primary)";
-                    
+
                     if (t_surf > limit) {
-                        en1264Tag = `<span style="color:white; background:#d81b60; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">⚠️ EN 1264 İHLALİ (> ${limit}°C)</span>`;
-                        t_surf_color = "#d81b60"; 
+                        en1264Tag    = `<span style="color:white; background:#d81b60; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">⚠️ EN 1264 İHLALİ (> ${limit}°C)</span>`;
+                        t_surf_color = "#d81b60";
                     }
-                    
                     let dewTag = "";
                     if (t_surf <= t_dew) {
-                        dewTag = `<span style="color:white; background:#0288d1; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">💧 ÇİĞLENME RİSKİ</span>`;
+                        dewTag       = `<span style="color:white; background:#0288d1; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">💧 ÇİĞLENME RİSKİ</span>`;
                         t_surf_color = "#0288d1";
                     }
 
                     let reValue = result.reynolds[i];
-                    let reText = "";
-                    let reColor = "";
-                    if (reValue < 2300) { reText = `Laminer (Re:${reValue.toFixed(0)})`; reColor = "#9e9e9e"; } 
-                    else if (reValue < 4000) { reText = `Geçiş (Re:${reValue.toFixed(0)})`; reColor = "var(--warning)"; } 
-                    else { reText = `Türbülans (Re:${reValue.toFixed(0)})`; reColor = "var(--success)"; }
+                    let reText, reColor;
+                    if      (reValue < 2300) { reText = `Laminer (Re:${reValue.toFixed(0)})`;    reColor = "#9e9e9e"; }
+                    else if (reValue < 4000) { reText = `Geçiş (Re:${reValue.toFixed(0)})`;      reColor = "var(--warning)"; }
+                    else                     { reText = `Türbülans (Re:${reValue.toFixed(0)})`; reColor = "var(--success)"; }
 
-                    // KUSURSUZ 3 SATIR x 4 SÜTUN GRID 
                     resContainer.innerHTML += `
                         <div class="result-room-card" style="${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
                             <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
                                 <span>📍 ${roomNames[i]} ${criticalTag} ${multiZoneTag} ${statusTag} ${en1264Tag} ${dewTag}</span>
                                 <span style="font-size:11px; color:#666;">
-                                    Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> | 
+                                    Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> |
                                     Sistem: <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
                                 </span>
                             </div>
-                            
                             <div class="res-item"><span>Çıkan Isı (Aktif Alan)</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
                             <div class="res-item" style="background: #e1f5fe;"><span>Boru Metrajı</span><strong style="color:var(--info);">${result.len_per_zone[i].toFixed(0)}m (x${result.num_zones[i]})</strong></div>
                             <div class="res-item" style="background: #e1f5fe;"><span>Debimetre Ayarı</span><strong style="color:var(--info);">${result.flow_lpm[i].toFixed(1)} L/min</strong></div>
                             <div class="res-item"><span>Devre Direnci</span><strong style="color:${isCritical ? 'var(--warning)' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
-                            
                             <div class="res-item"><span>Kanat Verimi</span><strong style="color:#673ab7;">% ${(result.fin_eff[i]*100).toFixed(1)}</strong></div>
                             <div class="res-item" style="background:#f3e5f5;"><span>Radyant Oran</span><strong style="color:var(--academic);">% ${result.rad_ratio[i].toFixed(1)}</strong></div>
                             <div class="res-item" style="background:#f3e5f5;"><span>Akış Rejimi</span><strong style="color:${reColor};">${reText}</strong></div>
                             <div class="res-item" style="background:#f3e5f5;"><span>Çiğlenme Noktası</span><strong style="color:var(--academic);">${t_dew.toFixed(1)} °C</strong></div>
-
                             <div class="res-item" style="border: 2px solid ${t_surf_color}; background:#fff;"><span>Yüzey Sıc.</span><strong style="color:${t_surf_color};">${t_surf.toFixed(1)} °C</strong></div>
                             <div class="res-item"><span>Aşağı Kaçan</span><strong style="color:var(--danger);">${result.q_down[i].toFixed(1)} W/m²</strong></div>
                             <div class="res-item eco-item"><span>Oda Enerji (Yıllık)</span><strong style="color:var(--eco);">${result.room_energy[i].toFixed(0)} kWh</strong></div>
@@ -437,7 +686,9 @@
                         </div>
                     `;
                 }
-            } catch (error) { alert("Hata oluştu! Python sunucusu açık mı kontrol edin."); }
+            } catch (error) {
+                alert("Bağlantı hatası! Python sunucusu açık mı kontrol edin.\n\n" + error);
+            }
         }
     </script>
 </body>
