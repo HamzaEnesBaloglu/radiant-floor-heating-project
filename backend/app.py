@@ -35,6 +35,7 @@ def validate_inputs(data):
     rng(data.get('cop'),          1.0,  7.0,  'COP')
     rng(data.get('hours'),        500,  8760, 'Yıllık çalışma saati')
     rng(data.get('co2_factor'),   0.05, 2.0,  'CO2 faktörü (kg/kWh)')
+    rng(data.get('pipe_material'), 1, 5, 'Boru malzemesi (1-5)')
 
     rooms = data.get('rooms', [])
     for i, room in enumerate(rooms):
@@ -75,6 +76,7 @@ def calculate():
     if validation_errors:
         return jsonify({"status": "error", "message": " | ".join(validation_errors)}), 400
 
+
     t_water = float(data.get('t_water', 40.0))
     r_insulation = float(data.get('r_insulation', 0.85))
     dist_main = float(data.get('dist_main', 5.0))
@@ -86,8 +88,8 @@ def calculate():
     t_out_real = base_temp - (altitude * 0.0065)
     
     rh = float(data.get('rh', 50.0))
-    # YENİ EKLENEN GLİKOL ORANI
     glycol = float(data.get('glycol', 0.0))
+    pipe_material = float(data.get('pipe_material', 1.0))
 
     cop = float(data.get('cop', 3.5))
     hours = float(data.get('hours', 2000.0))
@@ -121,7 +123,7 @@ def calculate():
             matlab.double(t_room_list), matlab.double(spacing_list),
             matlab.double(r_cover_list), matlab.double(area_list), matlab.double(dist_list),
             matlab.double(ext_wall_len_list), matlab.double(room_height_list), matlab.double(window_area_list),
-            matlab.double(u_wall_list), matlab.double(u_window_list),
+            matlab.double(u_wall_list), matlab.double(u_window_list), pipe_material,
             nargout=25
         )
         

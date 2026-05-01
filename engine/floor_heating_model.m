@@ -1,5 +1,5 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.12.0)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.14.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -35,8 +35,19 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     t_mean_water = t_water - (delta_T_water / 2); 
     sys_t_mean = t_mean_water; 
 
-    d_out_room = 0.016; t_pipe_room = 0.002; 
-    d_in_room = d_out_room - (2 * t_pipe_room);
+    % BORU MALZEMESİ TABLOSU: [d_out(m), t_pipe(m), k_pipe(W/mK), epsilon(m)]
+    % 1=PEX-a, 2=PEX-AL-PEX, 3=PE-RT, 4=PE-Xa, 5=Bakır
+    pipe_table = [0.016, 0.002, 0.40,  0.000007;   % PEX-a
+                  0.016, 0.002, 0.45,  0.0000015;  % PEX-AL-PEX
+                  0.016, 0.002, 0.40,  0.000007;   % PE-RT
+                  0.017, 0.002, 0.38,  0.000007;   % PE-Xa
+                  0.015, 0.001, 380.0, 0.0000015]; % Bakır
+    pm = max(1, min(5, round(pipe_material)));
+    d_out_room   = pipe_table(pm, 1);
+    t_pipe_room  = pipe_table(pm, 2);
+    k_pipe       = pipe_table(pm, 3);
+    epsilon_room = pipe_table(pm, 4);
+    d_in_room  = d_out_room - (2 * t_pipe_room);
     cross_area_room = pi * (d_in_room^2) / 4;
 
     sys_total_heat = 0; 
@@ -135,8 +146,11 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
         if Re < 2300
             f = 64 / max(Re, 1e-5);
+        elseif Re < 4000
+            f = 0.3164 / (Re^0.25);  % Geçiş bölgesi
         else
-            f = 0.3164 / (Re^0.25);
+            % Colebrook-White (Swamee-Jain yaklaşımı) — pürüzlülük dahil
+            f = 0.25 / (log10(epsilon_room / (3.7 * d_in_room) + 5.74 / (Re^0.9)))^2;
         end
         delta_p_pascal = f * (len_per_zone / d_in_room) * (rho * velocity^2) / 2;
         p_drop_arr(i) = delta_p_pascal / 1000; 
@@ -154,10 +168,13 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     main_velocity = total_vol_flow / cross_area_main;
     
     Re_main = (rho * main_velocity * d_in_main) / mu;
+    % Ana hat: PEX-AL-PEX veya bakır bağımsız olarak epsilon_room kullan
     if Re_main < 2300
         f_main = 64 / max(Re_main, 1e-5);
-    else
+    elseif Re_main < 4000
         f_main = 0.3164 / (Re_main^0.25);
+    else
+        f_main = 0.25 / (log10(epsilon_room / (3.7 * d_in_main) + 5.74 / (Re_main^0.9)))^2;
     end
     
     main_p_pascal = f_main * ((dist_main * 2) / d_in_main) * (rho * main_velocity^2) / 2;
