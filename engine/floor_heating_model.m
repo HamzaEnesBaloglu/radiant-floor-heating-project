@@ -115,14 +115,19 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         length_factor = layout_table(lt, 1);
         eta_layout    = layout_table(lt, 2);
 
-        % Schnabel & Schlegel: spiral için L_fin düzeltmesi (boru arası ısı transferi)
-        if lt == 2  % Spiral
-            correction = 1 - (delta_T_water / (4 * max(t_mean_water - t_room, 0.1)));
-            L_fin = (spacing / 2) * max(correction, 0.5);
+        % Koschenz & Lehmann (2000) Eq. 2.13 — spiral asimetrik fin modeli
+        L_fin = spacing / 2;
+        if lt == 2  % Spiral — gidiş/dönüş boruları yan yana, asimetrik sınır koşulu
+            mL  = m_param * L_fin;
+            mL2 = m_param * (L_fin / 2);
+            eta_symmetric  = tanh(mL) / mL;
+            delta_t_ratio  = delta_T_water / (2 * max(t_mean_water - t_room, 0.1));
+            eta_asymmetry  = 1 - delta_t_ratio * (tanh(mL2) / tanh(mL));
+            fin_efficiency = eta_symmetric * eta_asymmetry;
         else
-            L_fin = spacing / 2;
+            % Serpantin & Çift Serpantin — simetrik fin analojisi
+            fin_efficiency = tanh(m_param * L_fin) / (m_param * L_fin);
         end
-        fin_efficiency = tanh(m_param * L_fin) / (m_param * L_fin);
         fin_eff_arr(i) = fin_efficiency;
 
         q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency * eta_layout;
