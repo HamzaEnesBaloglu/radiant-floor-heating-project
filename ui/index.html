@@ -55,8 +55,8 @@
 <body>
 
     <div class="header">
-        <h1>Radiant Floor Solver | BES Application</h1>
-        <p>Akademik Termodinamik, EN 1264 ve Sistem Kalibrasyonu (v0.12.0)</p>
+        <h1>Radiant Floor Solver</h1>
+        <p>Akademik Termodinamik & Isı Transferi (v0.15.0)</p>
     </div>
 
     <div class="container">
@@ -458,6 +458,14 @@
                                     <option value="1.3">Zorlamalı Havalandırma (Var)</option>
                                 </select>
                             </div>
+                            <div class="input-group">
+                                <label title="Döşeme geometrisi boru metrajını ve ısı uniformitesini etkiler">Döşeme Deseni ℹ️</label>
+                                <select class="r-layout">
+                                    <option value="1" selected>🐍 Serpantin (Meander)</option>
+                                    <option value="2">🌀 Spiral (Salyangoz)</option>
+                                    <option value="3">↔️ Çift Serpantin</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -621,7 +629,8 @@
                     room_height:        parseFloat(card.querySelector('.r-height').value),
                     window_area:        parseFloat(card.querySelector('.r-window').value),
                     u_wall:             parseFloat(card.querySelector('.r-u-wall').value),
-                    u_window:           parseFloat(card.querySelector('.r-u-window').value)
+                    u_window:           parseFloat(card.querySelector('.r-u-window').value),
+                    layout_type:        parseFloat(card.querySelector('.r-layout').value)
                 });
             });
 

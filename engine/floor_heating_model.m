@@ -1,5 +1,5 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.14.0)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.15.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -50,6 +50,15 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     d_in_room  = d_out_room - (2 * t_pipe_room);
     cross_area_room = pi * (d_in_room^2) / 4;
 
+    % DÖŞEME DESENİ TABLOSU (Koschenz & Lehmann 2000, Schnabel & Schlegel 1996)
+    % layout_type: 1=Serpantin, 2=Spiral, 3=Çift Serpantin
+    % Sütunlar: [length_factor, eta_layout]
+    % length_factor : köşe payı boru uzunluğu çarpanı
+    % eta_layout    : ısı dağılım uniformite katsayısı
+    layout_table = [1.00, 0.95;   % Serpantin
+                    1.06, 1.00;   % Spiral
+                    1.03, 0.97];  % Çift Serpantin
+
     sys_total_heat = 0; 
     total_vol_flow = 0; 
     max_loop_length = 100; 
@@ -95,16 +104,29 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         rad_ratio_arr(i) = (h_rad / h_total_dynamic) * 100;
 
         % 2. TERMAL HESAPLAR VE KANAT VERİMİ
-        r_up = r_concrete + r_cover;
+        r_pipe = t_pipe_room / k_pipe;
+        r_up = r_pipe + r_concrete + r_cover;
         r_total = r_up + (1 / h_total_dynamic);
         u_surface = 1 / (r_cover + (1 / h_total_dynamic));
         m_param = sqrt(u_surface / (k_concrete * t_concrete));
-        L = spacing / 2;
         
-        fin_efficiency = tanh(m_param * L) / (m_param * L);
-        fin_eff_arr(i) = fin_efficiency; 
+        % DÖŞEME DESENİ — oda bazında layout seç
+        lt = max(1, min(3, round(layout_type_arr(i))));
+        length_factor = layout_table(lt, 1);
+        eta_layout    = layout_table(lt, 2);
 
-        q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency;
+        % Schnabel & Schlegel: spiral için L_fin düzeltmesi (boru arası ısı transferi)
+        if lt == 2  % Spiral
+            correction = 1 - (delta_T_water / (4 * max(t_mean_water - t_room, 0.1)));
+            L_fin = (spacing / 2) * max(correction, 0.5);
+        else
+            L_fin = spacing / 2;
+        end
+        fin_efficiency = tanh(m_param * L_fin) / (m_param * L_fin);
+        fin_eff_arr(i) = fin_efficiency;
+
+        q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency * eta_layout;
+
         q_flux_arr(i) = q_flux;
         
         t_surf_arr(i) = t_room + (q_flux / h_total_dynamic);
@@ -126,7 +148,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         end
 
         % 4. ZONLAMA VE DEBİ
-        total_pipe_length = (active_room_area / spacing) + (2 * dist_to_coll);
+        total_pipe_length = ((active_room_area / spacing) + (2 * dist_to_coll)) * length_factor;
         num_zones = ceil(max(total_pipe_length, 1e-5) / max_loop_length);
         num_zones_arr(i) = num_zones;
         len_per_zone = total_pipe_length / num_zones;
