@@ -40,6 +40,10 @@
         .res-item.eco-item { background: #e8f5e9; }
         .res-item span { display: block; font-size: 11px; color: #666; }
         .res-item strong { font-size: 14px; color: var(--primary); }
+        .res-item small { display: block; font-size: 10px; color: #888; margin-top: 2px; }
+        .res-item.res-success { background: #e8f5e9; }
+        .res-item.res-danger  { background: #ffebee; }
+        .res-item.res-info    { background: #e1f5fe; }
 
         /* --- HATA & UYARI SİSTEMİ --- */
         .field-error { color: #d32f2f; font-size: 10px; font-weight: 600; margin-top: 3px; display: none; }
@@ -155,9 +159,20 @@
             <h3>Çevresel Verimlilik (Eco-Settings)</h3>
             <div class="eco-settings">
                 <div class="input-row">
-                    <div class="input-group"><label>Sistem Verimi (COP)</label><input type="number" id="eco_cop" value="3.5" step="0.1"></div>
-                    <div class="input-group"><label>Yıllık Çalışma (Saat)</label><input type="number" id="eco_hours" value="2000" step="100"></div>
-                    <div class="input-group"><label>Emisyon (kg CO2/kWh)</label><input type="number" id="eco_co2" value="0.4" step="0.05"></div>
+                    <div class="input-group"><label>Sistem Verimi (COP)</label><input type="number" id="eco_cop" value="3.5" step="0.1"><div class="field-error"></div></div>
+                    <div class="input-group"><label>Yıllık Çalışma (Saat)</label><input type="number" id="eco_hours" value="2000" step="100"><div class="field-error"></div></div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group"><label>Emisyon (kg CO2/kWh)</label><input type="number" id="eco_co2" value="0.4" step="0.05"><div class="field-error"></div></div>
+                    <div class="input-group">
+                        <label style="color:var(--academic);">Isı Kaynağı (Ekserji)</label>
+                        <select id="eco_heat_source" style="border-color:var(--academic);">
+                            <option value="1" selected>♨️ Isı Pompası</option>
+                            <option value="2">🔥 Doğalgaz Kazanı</option>
+                            <option value="3">⚡ Elektrikli Direnç</option>
+                            <option value="4">☀️ Güneş Enerjili</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -174,34 +189,46 @@
 
         <div class="panel results">
             <h3>Tüm Ev Özeti <span style="font-size: 12px; color:var(--info);">🛠️ Şantiye Dashboard</span></h3>
-            <div class="summary-dashboard">
-                <div class="dash-box">
-                    <div class="dash-title">Dış Sıc.</div>
-                    <div class="dash-val" id="res_t_out" style="color: #fff;">-- °C</div>
+            <div class="summary-dashboard" style="flex-direction: column; gap: 8px;">
+                <div style="display:flex; gap:10px; width:100%;">
+                    <div class="dash-box">
+                        <div class="dash-title">Dış Sıc.</div>
+                        <div class="dash-val" id="res_t_out" style="color:#fff;">-- °C</div>
+                    </div>
+                    <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
+                        <div class="dash-title">T_mean</div>
+                        <div class="dash-val" id="res_t_mean" style="color:#ffb74d;">-- °C</div>
+                    </div>
+                    <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
+                        <div class="dash-title">Kollektör</div>
+                        <div class="dash-val" id="res_manifold" style="color:#64b5f6;">-- Ağız</div>
+                    </div>
+                    <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
+                        <div class="dash-title">Pompa</div>
+                        <div class="dash-val" id="res_pump_w" style="color:#ff9800;">-- W</div>
+                    </div>
+                    <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
+                        <div class="dash-title">Tüketim</div>
+                        <div class="dash-val eco" id="res_sys_energy">-- kWh</div>
+                    </div>
                 </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
-                    <div class="dash-title">T_mean</div>
-                    <div class="dash-val" id="res_t_mean" style="color: #ffb74d;">-- °C</div>
-                </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
-                    <div class="dash-title">Kollektör</div>
-                    <div class="dash-val" id="res_manifold" style="color: #64b5f6;">-- Ağız</div>
-                </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
-                    <div class="dash-title">Pompa</div>
-                    <div class="dash-val" id="res_pump_w" style="color: #ff9800;">-- W</div>
-                </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
-                    <div class="dash-title">Tüketim</div>
-                    <div class="dash-val eco" id="res_sys_energy">-- kWh</div>
-                </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
-                    <div class="dash-title">Karbon İzi</div>
-                    <div class="dash-val eco" id="res_sys_co2" style="color: #f44336;">-- kg</div>
-                </div>
-                <div class="dash-box" style="border-left: 1px solid #444; padding-left:10px;">
-                    <div class="dash-title" style="color:var(--academic);">CO2 Azaltma</div>
-                    <div class="dash-val" id="res_co2_red" style="color: var(--academic);">-- %</div>
+                <div style="display:flex; gap:10px; width:100%; border-top:1px solid #333; padding-top:8px;">
+                    <div class="dash-box">
+                        <div class="dash-title">Karbon İzi</div>
+                        <div class="dash-val" id="res_sys_co2" style="color:#f44336;">-- kg</div>
+                    </div>
+                    <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
+                        <div class="dash-title" style="color:var(--academic);">CO2 Azaltma</div>
+                        <div class="dash-val" id="res_co2_red" style="color:var(--academic);">-- %</div>
+                    </div>
+                    <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
+                        <div class="dash-title" style="color:var(--academic);">η_I</div>
+                        <div class="dash-val" id="res_eta_I" style="color:#ce93d8;">--</div>
+                    </div>
+                    <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
+                        <div class="dash-title" style="color:var(--academic);">ψ_R (Sistem)</div>
+                        <div class="dash-val" id="res_psi_r" style="color:#ce93d8;">--</div>
+                    </div>
                 </div>
             </div>
 
@@ -592,6 +619,7 @@
                 cop:          parseFloat(document.getElementById('eco_cop').value),
                 hours:        parseFloat(document.getElementById('eco_hours').value),
                 co2_factor:   parseFloat(document.getElementById('eco_co2').value),
+                heat_source:  parseFloat(document.getElementById('eco_heat_source').value),
                 rooms: []
             };
 
@@ -658,6 +686,8 @@
                 document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
                 document.getElementById('res_sys_co2').innerText  = result.sys_total_co2.toFixed(0) + " kg";
                 document.getElementById('res_co2_red').innerText  = result.sys_co2_reduction.toFixed(1) + " %";
+                document.getElementById('res_eta_I').innerText    = result.sys_eta_I.toFixed(3);
+                document.getElementById('res_psi_r').innerText    = result.sys_psi_r.toFixed(3);
 
                 const resContainer = document.getElementById('results-container');
                 resContainer.innerHTML = '';
@@ -699,27 +729,55 @@
                     else                     { reText = `Türbülans (Re:${reValue.toFixed(0)})`; reColor = "var(--success)"; }
 
                     resContainer.innerHTML += `
-                        <div class="result-room-card" style="${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
-                            <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
-                                <span>📍 ${roomNames[i]} ${criticalTag} ${multiZoneTag} ${statusTag} ${en1264Tag} ${dewTag}</span>
-                                <span style="font-size:11px; color:#666;">
-                                    Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> |
-                                    Sistem: <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
-                                </span>
-                            </div>
-                            <div class="res-item"><span>Çıkan Isı (Aktif Alan)</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
-                            <div class="res-item" style="background: #e1f5fe;"><span>Boru Metrajı</span><strong style="color:var(--info);">${result.len_per_zone[i].toFixed(0)}m (x${result.num_zones[i]})</strong></div>
-                            <div class="res-item" style="background: #e1f5fe;"><span>Debimetre Ayarı</span><strong style="color:var(--info);">${result.flow_lpm[i].toFixed(1)} L/min</strong></div>
-                            <div class="res-item"><span>Devre Direnci</span><strong style="color:${isCritical ? 'var(--warning)' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
-                            <div class="res-item"><span>Kanat Verimi</span><strong style="color:#673ab7;">% ${(result.fin_eff[i]*100).toFixed(1)}</strong></div>
-                            <div class="res-item" style="background:#f3e5f5;"><span>Radyant Oran</span><strong style="color:var(--academic);">% ${result.rad_ratio[i].toFixed(1)}</strong></div>
-                            <div class="res-item" style="background:#f3e5f5;"><span>Akış Rejimi</span><strong style="color:${reColor};">${reText}</strong></div>
-                            <div class="res-item" style="background:#f3e5f5;"><span>Çiğlenme Noktası</span><strong style="color:var(--academic);">${t_dew.toFixed(1)} °C</strong></div>
-                            <div class="res-item" style="border: 2px solid ${t_surf_color}; background:#fff;"><span>Yüzey Sıc.</span><strong style="color:${t_surf_color};">${t_surf.toFixed(1)} °C</strong></div>
-                            <div class="res-item"><span>Aşağı Kaçan</span><strong style="color:var(--danger);">${result.q_down[i].toFixed(1)} W/m²</strong></div>
-                            <div class="res-item eco-item"><span>Oda Enerji (Yıllık)</span><strong style="color:var(--eco);">${result.room_energy[i].toFixed(0)} kWh</strong></div>
-                            <div class="res-item eco-item"><span>Karbon Faturası</span><strong style="color:var(--eco);">${result.room_co2[i].toFixed(0)} kg CO₂</strong></div>
+                        <div class="result-room-card" style="grid-template-columns: 1fr 1fr 1fr 1fr; ${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
+                        <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
+                            <span>📍 ${roomNames[i]} ${criticalTag}</span>
+                            <span style="font-size:11px; color:#666;">
+                                Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> |
+                                Sistem: <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
+                            </span>
                         </div>
+                        <div class="res-item ${!isSufficient ? 'res-danger' : 'res-success'}">
+                            <span>Yeterlilik</span>
+                            <strong>${isSufficient ? '✅ YETERLİ' : '❌ YETERSİZ'}</strong>
+                            <small>${isSufficient ? 'Kap: %' + result.coverage_ratio[i].toFixed(0) : 'Açık: ' + result.surplus_watt[i].toFixed(0) + ' W'}</small>
+                        </div>
+                        <div class="res-item ${result.num_zones[i] > 1 ? 'res-info' : ''}">
+                            <span>Zonlama</span>
+                            <strong>${result.num_zones[i] > 1 ? result.num_zones[i] + ' Hat' : 'Tek Hat'}</strong>
+                            <small>${result.len_per_zone[i].toFixed(0)}m/hat</small>
+                        </div>
+                        <div class="res-item ${t_surf > limit ? 'res-danger' : ''}">
+                            <span>EN 1264</span>
+                            <strong style="color:${t_surf > limit ? '#d81b60' : 'var(--success)'};">${t_surf > limit ? '⚠️ İHLAL' : '✅ UYGUN'}</strong>
+                            <small>Max ${limit}°C</small>
+                        </div>
+                        <div class="res-item ${t_surf <= t_dew ? 'res-danger' : ''}">
+                            <span>Çiğlenme</span>
+                            <strong style="color:${t_surf <= t_dew ? '#0288d1' : 'var(--success)'};">${t_surf <= t_dew ? '💧 RİSK' : '✅ GÜVENLI'}</strong>
+                            <small>Nkt: ${t_dew.toFixed(1)}°C</small>
+                        </div>
+                        <div class="res-item"><span>Isı Akısı</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
+                        <div class="res-item" style="background:#e1f5fe;"><span>Debimetre</span><strong style="color:var(--info);">${result.flow_lpm[i].toFixed(1)} L/min</strong></div>
+                        <div class="res-item"><span>Devre Direnci</span><strong style="color:${isCritical ? 'var(--warning)' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
+                        <div class="res-item"><span>Kanat Verimi</span><strong style="color:#673ab7;">% ${(result.fin_eff[i]*100).toFixed(1)}</strong></div>
+                        <div class="res-item" style="background:#f3e5f5;"><span>Radyant Oran</span><strong style="color:var(--academic);">% ${result.rad_ratio[i].toFixed(1)}</strong></div>
+                        <div class="res-item" style="background:#f3e5f5;"><span>Akış Rejimi</span><strong style="color:${reColor};">${reText}</strong></div>
+                        <div class="res-item" style="background:#f3e5f5;"><span>Yüzey Sıc.</span><strong style="color:${t_surf_color};">${t_surf.toFixed(1)} °C</strong></div>
+                        <div class="res-item"><span>Aşağı Kaçan</span><strong style="color:var(--danger);">${result.q_down[i].toFixed(1)} W/m²</strong></div>
+                        <div class="res-item eco-item"><span>Yıllık Enerji</span><strong style="color:var(--eco);">${result.room_energy[i].toFixed(0)} kWh</strong></div>
+                        <div class="res-item eco-item"><span>Karbon</span><strong style="color:var(--eco);">${result.room_co2[i].toFixed(0)} kg CO₂</strong></div>
+                        <div class="res-item" style="background:#f3e5f5;">
+                            <span>Bina Ekserji</span>
+                            <strong style="color:var(--academic);">${result.e_bina[i].toFixed(3)}</strong>
+                            <small style="color:#999;">e_bina</small>
+                        </div>
+                        <div class="res-item" style="background:#f3e5f5;">
+                            <span>ψ_R (Oda)</span>
+                            <strong style="color:var(--academic);">${result.psi_r[i].toFixed(3)}</strong>
+                            <small style="color:#999;">Ekserji Ver.</small>
+                        </div>
+                    </div>
                     `;
                 }
             } catch (error) {

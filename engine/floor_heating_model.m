@@ -1,5 +1,5 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.15.0)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.16.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -22,7 +22,34 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     t_dew_arr = zeros(1, num_rooms);
     rad_ratio_arr = zeros(1, num_rooms);
 
+    % YENİ: EKSERJİ DİZİLERİ
+    e_bina_arr = zeros(1, num_rooms);
+    psi_r_arr  = zeros(1, num_rooms);
+
     k_concrete = 1.4; t_concrete = 0.05;
+
+    % YENİ: EKSERJİ ARZI HESABI (Isı Kaynağına Göre)
+    % heat_source: 1=Isı Pompası, 2=Doğalgaz, 3=Elektrikli Direnç, 4=Güneş
+    T0_K       = t_out + 273.15;
+    T_water_K  = t_water + 273.15;
+
+    switch heat_source
+        case 1  % Isı Pompası
+            e_supply = max(0, (1 - T0_K / T_water_K) * (1 / cop));
+        case 2  % Doğalgaz Kazanı (η_kazан ≈ 0.90)
+            eta_boiler = 0.90;
+            e_supply = max(0, (1 - T0_K / T_water_K) / eta_boiler);
+        case 3  % Elektrikli Direnç (COP=1 muadili)
+            e_supply = max(0, 1 - T0_K / T_water_K);
+        case 4  % Güneş Enerjili
+            % Güneş ekserji faktörü: Petela (1964) — T_güneş ≈ 5778 K
+            T_sun = 5778;
+            eta_solar = 0.15; % Tipik panel verimi
+            e_supply = max(0, eta_solar * (1 - T0_K / T_sun));
+        otherwise
+            e_supply = max(0, (1 - T0_K / T_water_K) * (1 / cop));
+    end
+
     r_concrete = t_concrete / k_concrete; 
     
     % YENİ: DİNAMİK SU VE GLİKOL ÖZELLİKLERİ (Ampirik Yaklaşımlar)
@@ -79,6 +106,18 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         alpha = (17.625 * t_room) / (243.04 + t_room) + log(rh/100);
         t_dew = (243.04 * alpha) / (17.625 - alpha);
         t_dew_arr(i) = t_dew;
+
+        % YENİ: ODA EKSERJİ TALEBİ (Bejan 1996 — Carnot faktörü)
+        T_surf_K      = t_surf_arr(i) + 273.15;
+        e_bina        = max(0, 1 - T0_K / T_surf_K);
+        e_bina_arr(i) = e_bina;
+
+        % YENİ: ODA ψ_R
+        if e_supply > 0
+            psi_r_arr(i) = min(1, e_bina / e_supply);
+        else
+            psi_r_arr(i) = 0;
+        end
 
         % F2 (Aktif Alan Oranı)
         F2 = active_area_arr(i) / 100;
@@ -187,6 +226,22 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         room_energy_arr(i) = room_energy_kwh;
         room_co2_arr(i) = room_energy_kwh * co2_factor;
     end
+
+    % YENİ: SİSTEM GENELİ EKSERJİ METRİKLERİ
+    % Ağırlıklı ortalama — ağırlık: her odanın toplam ısı gücü × aktif alan
+    weights = q_flux_arr .* (area_arr .* (active_area_arr / 100));
+    total_weight = sum(weights);
+
+    if total_weight > 0
+        sys_psi_r = sum(psi_r_arr .* weights) / total_weight;
+    else
+        sys_psi_r = 0;
+    end
+
+    % η_I = Ortalama fin verimi × (1/COP) × dağıtım verimi (0.85 sabit)
+    eta_dist  = 0.85;
+    avg_fin   = sum(fin_eff_arr .* weights) / max(total_weight, 1e-9);
+    sys_eta_I = avg_fin * (1 / cop) * eta_dist;
 
     % 6. ANA HAT VE POMPA HESABI
     t_pipe_main = 0.0034; 

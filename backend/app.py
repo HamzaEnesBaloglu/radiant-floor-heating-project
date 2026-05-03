@@ -94,6 +94,7 @@ def calculate():
     cop = float(data.get('cop', 3.5))
     hours = float(data.get('hours', 2000.0))
     co2_factor = float(data.get('co2_factor', 0.4))
+    heat_source = float(data.get('heat_source', 1.0))
 
     rooms = data.get('rooms', [])
     if not rooms:
@@ -117,16 +118,15 @@ def calculate():
     layout_type_list = [float(r.get('layout_type', 1.0)) for r in rooms]
 
     try:
-        # nargout=25, layout_type_arr eklendi (v0.15.0)
-        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction = eng.floor_heating_model(
+        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply = eng.floor_heating_model(
             t_water, matlab.double(t_below_list), r_insulation, dist_main, d_out_main, cop, hours, co2_factor, 
             t_out_real, wind_factor, rh, altitude, glycol, matlab.double(ventilation_list), matlab.double(active_area_list), 
             matlab.double(t_room_list), matlab.double(spacing_list),
             matlab.double(r_cover_list), matlab.double(area_list), matlab.double(dist_list),
             matlab.double(ext_wall_len_list), matlab.double(room_height_list), matlab.double(window_area_list),
             matlab.double(u_wall_list), matlab.double(u_window_list), pipe_material,
-            matlab.double(layout_type_list),
-            nargout=25
+            matlab.double(layout_type_list), heat_source,
+            nargout=30
         )
         
         def to_list(matlab_val):
@@ -160,7 +160,12 @@ def calculate():
             "sys_total_energy": sys_total_energy,
             "sys_total_co2": sys_total_co2,
             "sys_t_mean": sys_t_mean,
-            "sys_co2_reduction": sys_co2_reduction # YENİ
+            "sys_co2_reduction": sys_co2_reduction,
+            "e_bina": to_list(e_bina_arr),
+            "psi_r": to_list(psi_r_arr),
+            "sys_psi_r": sys_psi_r,
+            "sys_eta_I": sys_eta_I,
+            "e_supply": e_supply
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
