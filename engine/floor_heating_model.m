@@ -107,18 +107,6 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         t_dew = (243.04 * alpha) / (17.625 - alpha);
         t_dew_arr(i) = t_dew;
 
-        % YENİ: ODA EKSERJİ TALEBİ (Bejan 1996 — Carnot faktörü)
-        T_surf_K      = t_surf_arr(i) + 273.15;
-        e_bina        = max(0, 1 - T0_K / T_surf_K);
-        e_bina_arr(i) = e_bina;
-
-        % YENİ: ODA ψ_R
-        if e_supply > 0
-            psi_r_arr(i) = min(1, e_bina / e_supply);
-        else
-            psi_r_arr(i) = 0;
-        end
-
         % F2 (Aktif Alan Oranı)
         F2 = active_area_arr(i) / 100;
         active_room_area = room_area * F2; 
@@ -174,6 +162,19 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         q_flux_arr(i) = q_flux;
         
         t_surf_arr(i) = t_room + (q_flux / h_total_dynamic);
+
+        % ODA EKSERJİ TALEBİ (Bejan 1996 — Carnot faktörü)
+        % t_surf_arr(i) burada hesaplandıktan sonra kullanılıyor
+        T_surf_K      = t_surf_arr(i) + 273.15;
+        e_bina        = max(0, 1 - T0_K / T_surf_K);
+        e_bina_arr(i) = e_bina;
+
+        % ODA ψ_R
+        if e_supply > 0
+            psi_r_arr(i) = min(1, e_bina / e_supply);
+        else
+            psi_r_arr(i) = 0;
+        end
         
         q_down = (t_mean_water - t_below) / r_insulation; 
         q_down_arr(i) = q_down;
