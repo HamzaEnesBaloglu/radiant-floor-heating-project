@@ -35,7 +35,7 @@ def validate_inputs(data):
     rng(data.get('cop'),          1.0,  7.0,  'COP')
     rng(data.get('hours'),        500,  8760, 'Yıllık çalışma saati')
     rng(data.get('co2_factor'),   0.05, 2.0,  'CO2 faktörü (kg/kWh)')
-    rng(data.get('pipe_material'), 1, 5, 'Boru malzemesi (1-5)')
+    rng(data.get('pipe_material'), 1, 6, 'Boru malzemesi (1-6)')
 
     rooms = data.get('rooms', [])
     for i, room in enumerate(rooms):
