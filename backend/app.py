@@ -95,6 +95,7 @@ def calculate():
     hours = float(data.get('hours', 2000.0))
     co2_factor = float(data.get('co2_factor', 0.4))
     heat_source = float(data.get('heat_source', 1.0))
+    delta_T_water = float(data.get('delta_T_water', 5.0))
 
     rooms = data.get('rooms', [])
     if not rooms:
@@ -125,7 +126,7 @@ def calculate():
             matlab.double(r_cover_list), matlab.double(area_list), matlab.double(dist_list),
             matlab.double(ext_wall_len_list), matlab.double(room_height_list), matlab.double(window_area_list),
             matlab.double(u_wall_list), matlab.double(u_window_list), pipe_material,
-            matlab.double(layout_type_list), heat_source,
+            matlab.double(layout_type_list), heat_source, delta_T_water,
             nargout=30
         )
         

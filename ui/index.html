@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.15.0)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.16.1)</p>
     </div>
 
     <div class="container">
@@ -152,6 +152,11 @@
                             <option value="0.025">25 mm</option>
                             <option value="0.032" selected>32 mm</option>
                         </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Delta-T Su (°C)</label>
+                        <input type="number" id="sys_delta_T" value="5" step="1" min="2" max="20">
+                        <div class="field-error"></div>
                     </div>
                 </div>
             </div>
@@ -619,7 +624,8 @@
                 cop:          parseFloat(document.getElementById('eco_cop').value),
                 hours:        parseFloat(document.getElementById('eco_hours').value),
                 co2_factor:   parseFloat(document.getElementById('eco_co2').value),
-                heat_source:  parseFloat(document.getElementById('eco_heat_source').value),
+                heat_source:   parseFloat(document.getElementById('eco_heat_source').value),
+                delta_T_water: parseFloat(document.getElementById('sys_delta_T').value),
                 rooms: []
             };
 
