@@ -1,5 +1,5 @@
 function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.16.3)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.16.4)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -124,17 +124,20 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         q_loss_arr(i) = max(0, q_loss_watt); 
 
         % Dinamik Isı Transfer Katsayıları ve F3 (Hibrit Havalandırma)
+        % ISO 11855-2 correction factor yaklaşımı:
+        % r_total standart koşulda hesaplanır, F1 ve F3 sonuca uygulanır
         F3 = ventilation_arr(i);
         h_rad = 5.5;
-        h_conv = 5.3 * F1 * F3;
-        h_total_dynamic = h_rad + h_conv;
+        h_conv_std     = 5.3;                    % Standart koşul (deniz seviyesi, doğal havalandırma)
+        h_total_std    = h_rad + h_conv_std;     % Standart toplam katsayı
+        h_total_dynamic = h_rad + (5.3 * F1 * F3); % Gerçek koşul (radyant oran için)
         rad_ratio_arr(i) = (h_rad / h_total_dynamic) * 100;
 
         % 2. TERMAL HESAPLAR VE KANAT VERİMİ
         r_pipe = t_pipe_room / k_pipe;
         r_up = r_pipe + r_concrete + r_cover;
-        r_total = r_up + (1 / h_total_dynamic);
-        u_surface = 1 / (r_cover + (1 / h_total_dynamic));
+        r_total = r_up + (1 / h_total_std);     % Standart koşulda r_total
+        u_surface = 1 / (r_cover + (1 / h_total_std)); % Standart koşulda u_surface
         m_param = sqrt(u_surface / (k_concrete * t_concrete));
         
         % DÖŞEME DESENİ — oda bazında layout seç
@@ -157,7 +160,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         end
         fin_eff_arr(i) = fin_efficiency;
 
-        q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency * eta_layout;
+        q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency * eta_layout * F1 * F3;
 
         q_flux_arr(i) = q_flux;
         
