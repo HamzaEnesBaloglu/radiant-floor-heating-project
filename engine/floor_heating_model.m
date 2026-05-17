@@ -1,5 +1,5 @@
-function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.16.4)
+function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (V0.17.0)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -21,6 +21,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     % Çiğlenme Noktası ve Radyant Oran Dizileri
     t_dew_arr = zeros(1, num_rooms);
     rad_ratio_arr = zeros(1, num_rooms);
+    m_param_arr = zeros(1, num_rooms);
 
     % YENİ: EKSERJİ DİZİLERİ
     e_bina_arr = zeros(1, num_rooms);
@@ -68,7 +69,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
                   0.016, 0.002, 0.40,  0.000007;   % 3: PE-RT 16mm
                   0.017, 0.002, 0.38,  0.000007;   % 4: PE-Xa 17mm
                   0.015, 0.001, 380.0, 0.0000015;  % 5: Bakır 15mm
-                  0.0127,0.0015,0.40,  0.000007];  % 6: PEX 12.7mm (Kilkis ref.)
+                  0.0127,0.0015,0.40,  0.000007];  % 6: PEX 12.7mm (Prof.Kilkis ref.)
     pm = max(1, min(5, round(pipe_material)));
     d_out_room   = pipe_table(pm, 1);
     t_pipe_room  = pipe_table(pm, 2);
@@ -158,7 +159,9 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
             % Serpantin & Çift Serpantin — simetrik fin analojisi
             fin_efficiency = tanh(m_param * L_fin) / (m_param * L_fin);
         end
+
         fin_eff_arr(i) = fin_efficiency;
+        m_param_arr(i) = m_param;
 
         q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency * eta_layout * F1 * F3;
 
