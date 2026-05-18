@@ -666,11 +666,11 @@
         function drawWaveChart(idx, d) {
             const canvas = document.getElementById(`wave_${idx}`);
             if (!canvas) return;
-            const CSS_W = 380, CSS_H = 260;
+            const CSS_W = 320, CSS_H = 210;
             const { ctx, W, H } = setupHiDPI(canvas, CSS_W, CSS_H);
 
             // Layout
-            const PAD = { t: 58, b: 46, l: 50, r: 16 };
+            const PAD = { t: 52, b: 40, l: 46, r: 14 };
             const plotW = W - PAD.l - PAD.r;
             const plotH = H - PAD.t - PAD.b;
 
@@ -695,11 +695,12 @@
             ctx.textAlign = 'left';
             ctx.fillText('Yüzey Sıcaklığı Dalgalanması °C', legX + 20, legY + 9);
 
-            // Fizik
+            // Fizik — T_pipe: boru konumundaki zemin yüzey sıcaklığı (t_surf)
+            // t_mean (su sıcaklığı) değil; referans Image ile tutarlı yüzey ripple'ı için
             const L     = d.spacing;
             const m     = d.mParam;
             const mL2   = m * (L / 2);
-            const T_pipe = d.t_mean;
+            const T_pipe = d.t_surf;
 
             const N = 300;
             const pts = [];
@@ -712,7 +713,7 @@
 
             const midT  = pts[Math.floor(N / 2)].T;
             const tMax  = T_pipe;
-            const yRange = Math.max(tMax - midT, 0.5);
+            const yRange = Math.max(tMax - midT, 1.5);
             const yMin  = midT - yRange * 0.35;
             const yMax  = tMax + yRange * 0.25;
 
@@ -792,11 +793,11 @@
         function drawGradientChart(idx, d) {
             const canvas = document.getElementById(`grad_${idx}`);
             if (!canvas) return;
-            const CSS_W = 380, CSS_H = 260;
+            const CSS_W = 320, CSS_H = 210;
             const { ctx, W, H } = setupHiDPI(canvas, CSS_W, CSS_H);
 
             // Layout
-            const PAD = { t: 58, b: 52, l: 50, r: 16 };
+            const PAD = { t: 52, b: 46, l: 46, r: 14 };
             const plotW = W - PAD.l - PAD.r;
             const plotH = H - PAD.t - PAD.b;
 
