@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.17.0)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.16.4)</p>
     </div>
 
     <div class="container">
@@ -613,7 +613,6 @@
             const isHidden = el.style.display === 'none' || el.style.display === '';
             el.style.display = isHidden ? 'block' : 'none';
             if (isHidden) {
-                // İndeks: id = "charts_3" → 3
                 const idx = parseInt(id.split('_')[1]);
                 const d   = chartData[idx];
                 if (d && !d.drawn) {
@@ -627,249 +626,287 @@
         function buildChartData(result, data, roomNames) {
             chartData = [];
             for (let i = 0; i < result.q_total.length; i++) {
-                const room    = data.rooms[i];
-                const spacing = room.spacing;
-                const t_mean  = result.sys_t_mean;
-                const t_room  = room.t_room;
-                const mParam  = result.m_param[i];
-                const fin     = result.fin_eff[i];
-                const t_surf  = result.t_surf[i];
-                const t_water = data.t_water;
-                const r_cover = room.r_cover;
-
-                // Üst zemin kaplama kalınlıkları (m)
-                const coverThickMap = { "0.05": 0.008, "0.10": 0.018, "0.25": 0.035 };
-                const coverThick    = coverThickMap[String(r_cover)] || 0.018;
-
-                // Kaplama ismi
-                const coverNameMap  = { "0.05": "Seramik", "0.10": "Parke", "0.25": "Halı" };
-                const coverName     = coverNameMap[String(r_cover)] || "Kaplama";
-
-                // Isı kaynağı ismi
-                const sourceNames = { "1": "Isı Pompası", "2": "Doğalgaz", "3": "Elektrik", "4": "Güneş" };
-                const sourceName  = sourceNames[String(data.heat_source)] || "Kaynak";
-
+                const room      = data.rooms[i];
+                const coverNameMap = { "0.05": "Seramik", "0.10": "Parke", "0.25": "Halı" };
+                const sourceNames  = { "1": "Isı Pompası", "2": "Doğalgaz", "3": "Elektrik", "4": "Güneş" };
                 chartData.push({
-                    drawn: false,
-                    name: roomNames[i],
-                    spacing, t_mean, t_room, mParam, fin, t_surf, t_water,
-                    r_cover, coverThick, coverName, sourceName,
-                    q_flux: result.q_flux[i],
-                    q_down: result.q_down[i],
-                    t_dew:  result.t_dew[i],
-                    delta_T: data.delta_T_water
+                    drawn:      false,
+                    name:       roomNames[i],
+                    spacing:    room.spacing,
+                    t_mean:     result.sys_t_mean,
+                    t_room:     room.t_room,
+                    mParam:     result.m_param[i],
+                    t_surf:     result.t_surf[i],
+                    t_water:    data.t_water,
+                    r_cover:    room.r_cover,
+                    coverName:  coverNameMap[String(room.r_cover)] || "Kaplama",
+                    sourceName: sourceNames[String(data.heat_source)] || "Kaynak",
+                    q_flux:     result.q_flux[i],
+                    t_dew:      result.t_dew[i],
+                    delta_T:    data.delta_T_water
                 });
             }
         }
 
-        // ─── Grafik 1: Boru Arası Sıcaklık Dalgası ───────────────────
+        // HiDPI canvas setup — net görüntü için
+        function setupHiDPI(canvas, cssW, cssH) {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width  = cssW * dpr;
+            canvas.height = cssH * dpr;
+            canvas.style.width  = cssW + 'px';
+            canvas.style.height = cssH + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            return { ctx, W: cssW, H: cssH };
+        }
+
+        // ─── Grafik 2: Yatay Yüzey Sıcaklığı Dalgalanması (Ripple) ──────
+        // Fizik: T(x) = T_room + (T_boru - T_room) * cosh(m*x_fin) / cosh(m*L/2)
+        // x ekseni = iki boru arası mesafe (cm), y ekseni = yüzey sıcaklığı
         function drawWaveChart(idx, d) {
             const canvas = document.getElementById(`wave_${idx}`);
             if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const W = canvas.width, H = canvas.height;
-            const PAD = { t: 22, b: 32, l: 42, r: 14 };
+            const CSS_W = 380, CSS_H = 260;
+            const { ctx, W, H } = setupHiDPI(canvas, CSS_W, CSS_H);
+
+            // Layout
+            const PAD = { t: 58, b: 46, l: 50, r: 16 };
             const plotW = W - PAD.l - PAD.r;
             const plotH = H - PAD.t - PAD.b;
 
-            ctx.clearRect(0, 0, W, H);
-            ctx.fillStyle = '#fafafa';
+            // Beyaz arka plan
+            ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, W, H);
 
-            // Fizik: T(x) = t_room + (t_mean - t_room) * cosh(m*(L/2 - x)) / cosh(m*L/2)
-            // x: 0 → spacing (boru merkezden boru merkezine)
-            const L    = d.spacing;
-            const m    = d.mParam;
-            const mL2  = m * (L / 2);
-            const N    = 120;
-            const pts  = [];
-            let tMin = Infinity, tMax = -Infinity;
+            // Başlık
+            ctx.fillStyle = '#222';
+            ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('2. Yatay Yüzey Sıcaklığı Dalgalanması (Ripple)', W / 2, 18);
+
+            // Legend
+            const legX = W / 2 - 90, legY = 28;
+            ctx.fillStyle = 'rgba(210,70,70,0.22)';
+            ctx.fillRect(legX, legY, 16, 11);
+            ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 1.2;
+            ctx.strokeRect(legX, legY, 16, 11);
+            ctx.fillStyle = '#444';
+            ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Yüzey Sıcaklığı Dalgalanması °C', legX + 20, legY + 9);
+
+            // Fizik
+            const L     = d.spacing;
+            const m     = d.mParam;
+            const mL2   = m * (L / 2);
+            const T_pipe = d.t_mean;
+
+            const N = 300;
+            const pts = [];
             for (let k = 0; k <= N; k++) {
-                const x = (k / N) * L;
-                const dist = Math.abs(x - L / 2);
-                const T = d.t_room + (d.t_mean - d.t_room) * Math.cosh(m * (L / 2 - dist)) / Math.cosh(mL2);
-                pts.push({ x, T });
-                if (T < tMin) tMin = T;
-                if (T > tMax) tMax = T;
+                const xPos  = (k / N) * L;
+                const x_fin = Math.min(xPos, L - xPos);
+                const T = d.t_room + (T_pipe - d.t_room) * Math.cosh(m * x_fin) / Math.cosh(mL2);
+                pts.push({ xPos, T });
             }
 
-            // Eksen sınırları
-            const margin = Math.max(0.5, (tMax - tMin) * 0.15);
-            const yMin   = tMin - margin;
-            const yMax   = tMax + margin;
+            const midT  = pts[Math.floor(N / 2)].T;
+            const tMax  = T_pipe;
+            const yRange = Math.max(tMax - midT, 0.5);
+            const yMin  = midT - yRange * 0.35;
+            const yMax  = tMax + yRange * 0.25;
 
-            const toCanvasX = x => PAD.l + (x / L) * plotW;
-            const toCanvasY = T => PAD.t + (1 - (T - yMin) / (yMax - yMin)) * plotH;
+            const cx = xPos => PAD.l + (xPos / L) * plotW;
+            const cy = T    => PAD.t + (1 - (T - yMin) / (yMax - yMin)) * plotH;
 
-            // Grid
-            ctx.strokeStyle = '#e8eaf6';
-            ctx.lineWidth   = 0.8;
-            for (let g = 0; g <= 4; g++) {
-                const T  = yMin + g * (yMax - yMin) / 4;
-                const cy = toCanvasY(T);
-                ctx.beginPath(); ctx.moveTo(PAD.l, cy); ctx.lineTo(PAD.l + plotW, cy); ctx.stroke();
-                ctx.fillStyle = '#888'; ctx.font = '9px monospace'; ctx.textAlign = 'right';
-                ctx.fillText(T.toFixed(1) + '°', PAD.l - 3, cy + 3);
+            // Grid yatay çizgiler
+            const gridSteps = 4;
+            for (let g = 0; g <= gridSteps; g++) {
+                const T_g = yMin + g * (yMax - yMin) / gridSteps;
+                const y_g = cy(T_g);
+                ctx.strokeStyle = '#ececec'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(PAD.l, y_g); ctx.lineTo(PAD.l + plotW, y_g); ctx.stroke();
+                ctx.fillStyle = '#777'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+                ctx.fillText(T_g.toFixed(1), PAD.l - 5, y_g + 3.5);
             }
 
-            // T_room referans çizgisi
-            ctx.strokeStyle = '#90a4ae';
-            ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
-            ctx.beginPath();
-            const yRoom = toCanvasY(d.t_room);
-            ctx.moveTo(PAD.l, yRoom); ctx.lineTo(PAD.l + plotW, yRoom);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            // Y eksen başlığı
+            ctx.save();
+            ctx.translate(13, PAD.t + plotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#555';
+            ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
+            ctx.fillText('Sıcaklık (°C)', 0, 0);
+            ctx.restore();
 
-            // Dalga eğrisi — gradient fill
-            const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + plotH);
-            grad.addColorStop(0, 'rgba(63,81,181,0.25)');
-            grad.addColorStop(1, 'rgba(63,81,181,0.02)');
-
+            // Dolgulu alan
+            const fillGrad = ctx.createLinearGradient(0, cy(tMax), 0, cy(midT));
+            fillGrad.addColorStop(0, 'rgba(210,70,70,0.30)');
+            fillGrad.addColorStop(1, 'rgba(210,70,70,0.04)');
             ctx.beginPath();
-            ctx.moveTo(toCanvasX(pts[0].x), toCanvasY(pts[0].T));
-            for (let k = 1; k < pts.length; k++) {
-                ctx.lineTo(toCanvasX(pts[k].x), toCanvasY(pts[k].T));
-            }
-            // Fill
-            const fillPath = new Path2D();
-            fillPath.moveTo(toCanvasX(pts[0].x), toCanvasY(yMin));
-            for (const p of pts) fillPath.lineTo(toCanvasX(p.x), toCanvasY(p.T));
-            fillPath.lineTo(toCanvasX(pts[pts.length-1].x), toCanvasY(yMin));
-            fillPath.closePath();
-            ctx.fillStyle = grad; ctx.fill(fillPath);
+            ctx.moveTo(cx(pts[0].xPos), cy(yMin));
+            pts.forEach(p => ctx.lineTo(cx(p.xPos), cy(p.T)));
+            ctx.lineTo(cx(pts[N].xPos), cy(yMin));
+            ctx.closePath();
+            ctx.fillStyle = fillGrad; ctx.fill();
 
-            ctx.strokeStyle = '#3949ab'; ctx.lineWidth = 2;
+            // Ana eğri
             ctx.beginPath();
-            ctx.moveTo(toCanvasX(pts[0].x), toCanvasY(pts[0].T));
-            for (let k = 1; k < pts.length; k++) ctx.lineTo(toCanvasX(pts[k].x), toCanvasY(pts[k].T));
+            pts.forEach((p, i) => i === 0 ? ctx.moveTo(cx(p.xPos), cy(p.T)) : ctx.lineTo(cx(p.xPos), cy(p.T)));
+            ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.2;
             ctx.stroke();
 
-            // Boru noktaları
-            [0, L].forEach(bx => {
-                ctx.beginPath();
-                ctx.arc(toCanvasX(bx), toCanvasY(d.t_mean), 5, 0, Math.PI * 2);
-                ctx.fillStyle = '#e53935'; ctx.fill();
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-            });
+            // X ekseni: cm tick etiketleri
+            const spacingCm = Math.round(L * 100);
+            const tickCount = Math.min(spacingCm, 8);
+            ctx.fillStyle = '#666'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+            for (let t = 0; t <= tickCount; t++) {
+                const cmVal = Math.round((t / tickCount) * spacingCm);
+                const xPx   = cx(cmVal / 100);
+                ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(xPx, PAD.t + plotH); ctx.lineTo(xPx, PAD.t + plotH + 4); ctx.stroke();
+                ctx.fillText(cmVal + 'cm', xPx, PAD.t + plotH + 16);
+            }
 
-            // Min nokta (ortada)
-            const midT = pts[Math.floor(N/2)].T;
-            ctx.beginPath();
-            ctx.arc(toCanvasX(L/2), toCanvasY(midT), 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#1976d2'; ctx.fill();
+            // X eksen başlığı
+            ctx.fillStyle = '#555'; ctx.font = '10px "Segoe UI", Tahoma, sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('İki Boru Arası Mesafe', PAD.l + plotW / 2, H - 4);
 
-            // Etiketler
-            ctx.fillStyle = '#3949ab'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
-            ctx.fillText(`Min: ${midT.toFixed(1)}°C`, toCanvasX(L/2), toCanvasY(midT) - 7);
-            ctx.fillStyle = '#888'; ctx.font = '9px monospace';
-            ctx.fillText(`T_oda: ${d.t_room.toFixed(1)}°C`, PAD.l + plotW - 30, yRoom - 4);
+            // Tepe sıcaklık etiketleri (boru konumları)
+            ctx.fillStyle = '#922'; ctx.font = 'bold 9.5px monospace'; ctx.textAlign = 'center';
+            ctx.fillText(tMax.toFixed(1) + '°C', cx(0), cy(tMax) - 8);
+            ctx.fillText(tMax.toFixed(1) + '°C', cx(L), cy(tMax) - 8);
 
-            // X eksen etiketleri
-            ctx.fillStyle = '#555'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
-            ctx.fillText('Boru 1', toCanvasX(0), H - 4);
-            ctx.fillText(`${(L*100).toFixed(0)} cm`, toCanvasX(L/2), H - 4);
-            ctx.fillText('Boru 2', toCanvasX(L), H - 4);
+            // Min nokta etiketi
+            ctx.fillStyle = '#444'; ctx.font = 'bold 9.5px monospace';
+            ctx.fillText('Min: ' + midT.toFixed(1) + '°C', cx(L / 2), cy(midT) + 15);
+
+            // Çerçeve
+            ctx.strokeStyle = '#dde3f0'; ctx.lineWidth = 1;
+            ctx.strokeRect(PAD.l, PAD.t, plotW, plotH);
         }
 
-        // ─── Grafik 2: Dikey Sıcaklık Gradyanı ──────────────────────
+        // ─── Grafik 1: Dikey Sıcaklık Gradyanı (Katmanlar) ──────────────
+        // x ekseni = katman adları (Su → Şap → Zemin → Oda), y ekseni = sıcaklık
         function drawGradientChart(idx, d) {
             const canvas = document.getElementById(`grad_${idx}`);
             if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const W = canvas.width, H = canvas.height;
-            const PAD = { t: 18, b: 18, l: 100, r: 60 };
+            const CSS_W = 380, CSS_H = 260;
+            const { ctx, W, H } = setupHiDPI(canvas, CSS_W, CSS_H);
+
+            // Layout
+            const PAD = { t: 58, b: 52, l: 50, r: 16 };
             const plotW = W - PAD.l - PAD.r;
             const plotH = H - PAD.t - PAD.b;
 
-            ctx.clearRect(0, 0, W, H);
-            ctx.fillStyle = '#fafafa';
+            // Beyaz arka plan
+            ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, W, H);
 
-            // Katmanlar ve sıcaklık noktaları
-            // Şap içi sıcaklık: t_surf + (q_flux * r_concrete)
-            // r_concrete = 0.05 / 1.4 = 0.0357
-            const r_conc = 0.05 / 1.4;
-            const t_inScreed = d.t_surf + d.q_flux * r_conc;
+            // Başlık
+            ctx.fillStyle = '#222';
+            ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('1. Dikey Sıcaklık Gradyanı (Katmanlar)', W / 2, 18);
 
-            // Kazan çıkışı = t_water, kollektör = t_mean, şap içi, zemin yüzeyi, oda havası
+            // Legend
+            const legX = W / 2 - 70, legY = 28;
+            ctx.fillStyle = 'rgba(74,144,210,0.22)';
+            ctx.fillRect(legX, legY, 16, 11);
+            ctx.strokeStyle = '#2980b9'; ctx.lineWidth = 1.2;
+            ctx.strokeRect(legX, legY, 16, 11);
+            ctx.fillStyle = '#444';
+            ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Sıcaklık Düşüşü (°C)', legX + 20, legY + 9);
+
+            // Katman verileri — 4 nokta, referans görselle birebir
+            const r_conc   = 0.05 / 1.4;
+            const t_screed = d.t_surf + d.q_flux * r_conc;
+
             const layers = [
-                { label: d.sourceName,    T: d.t_water,    subLabel: 'Çıkış' },
-                { label: 'Kollektör',     T: d.t_mean,     subLabel: 'T_ort' },
-                { label: 'Şap İçi',       T: t_inScreed,   subLabel: '~5cm' },
-                { label: 'Zemin Yüzeyi',  T: d.t_surf,     subLabel: d.coverName },
-                { label: 'Oda Havası',    T: d.t_room,     subLabel: 'Konfor' },
+                { label: 'Su Sıcaklığı', sub: '(T_w)', T: d.t_water },
+                { label: 'Şap İçi',      sub: '(T_c)', T: t_screed  },
+                { label: 'Zemin Yüzeyi', sub: '(T_s)', T: d.t_surf  },
+                { label: 'Oda Havası',   sub: '(T_i)', T: d.t_room  },
             ];
 
-            const tAll = layers.map(l => l.T);
-            const tMin = Math.min(...tAll) - 1;
-            const tMax = Math.max(...tAll) + 0.5;
+            const NL    = layers.length;
+            const tVals = layers.map(l => l.T);
+            const tMin  = Math.floor(Math.min(...tVals)) - 1;
+            const tMax  = Math.ceil(Math.max(...tVals))  + 2;
+            const tRange = tMax - tMin;
 
-            const toX = T => PAD.l + ((T - tMin) / (tMax - tMin)) * plotW;
-            const N   = layers.length;
-            const toY = i => PAD.t + (i / (N - 1)) * plotH;
+            const xOf = i => PAD.l + (i / (NL - 1)) * plotW;
+            const yOf = T => PAD.t + (1 - (T - tMin) / tRange) * plotH;
 
-            // Arka plan bantları (katman renkleri)
-            const bandColors = ['#fce4ec','#fff3e0','#e8f5e9','#e3f2fd','#f3e5f5'];
-            for (let i = 0; i < N - 1; i++) {
-                ctx.fillStyle = bandColors[i] + '99';
-                ctx.fillRect(0, toY(i), W, toY(i+1) - toY(i));
+            // Grid yatay çizgiler
+            const gridSteps = 4;
+            for (let g = 0; g <= gridSteps; g++) {
+                const T_g = tMin + g * tRange / gridSteps;
+                const y_g = yOf(T_g);
+                ctx.strokeStyle = '#ececec'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(PAD.l, y_g); ctx.lineTo(PAD.l + plotW, y_g); ctx.stroke();
+                ctx.fillStyle = '#777'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+                ctx.fillText(T_g.toFixed(0), PAD.l - 5, y_g + 3.5);
             }
 
-            // Grid dikey çizgiler
-            ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 0.7;
-            for (let g = 0; g <= 4; g++) {
-                const T  = tMin + g * (tMax - tMin) / 4;
-                const cx = toX(T);
-                ctx.beginPath(); ctx.moveTo(cx, PAD.t); ctx.lineTo(cx, PAD.t + plotH); ctx.stroke();
-                ctx.fillStyle = '#999'; ctx.font = '8px monospace'; ctx.textAlign = 'center';
-                ctx.fillText(T.toFixed(1) + '°', cx, PAD.t + plotH + 11);
-            }
+            // Y eksen başlığı
+            ctx.save();
+            ctx.translate(13, PAD.t + plotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#555';
+            ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
+            ctx.fillText('Sıcaklık (°C)', 0, 0);
+            ctx.restore();
 
-            // Bağlantı çizgisi
-            const lineColors = ['#e53935','#fb8c00','#43a047','#1e88e5'];
-            for (let i = 0; i < N - 1; i++) {
-                const x1 = toX(layers[i].T), y1 = toY(i);
-                const x2 = toX(layers[i+1].T), y2 = toY(i+1);
-                const grad = ctx.createLinearGradient(0, y1, 0, y2);
-                grad.addColorStop(0, lineColors[i]);
-                grad.addColorStop(1, lineColors[Math.min(i+1, lineColors.length-1)]);
-                ctx.strokeStyle = grad; ctx.lineWidth = 2.5;
-                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-            }
+            // Dolgulu alan
+            ctx.beginPath();
+            ctx.moveTo(xOf(0), yOf(tMin));
+            layers.forEach((l, i) => ctx.lineTo(xOf(i), yOf(l.T)));
+            ctx.lineTo(xOf(NL - 1), yOf(tMin));
+            ctx.closePath();
+            const fillGrad = ctx.createLinearGradient(PAD.l, 0, PAD.l + plotW, 0);
+            fillGrad.addColorStop(0, 'rgba(74,144,210,0.30)');
+            fillGrad.addColorStop(1, 'rgba(74,144,210,0.05)');
+            ctx.fillStyle = fillGrad; ctx.fill();
 
-            // Nokta ve etiketler
+            // Ana çizgi
+            ctx.beginPath();
+            layers.forEach((l, i) => i === 0 ? ctx.moveTo(xOf(i), yOf(l.T)) : ctx.lineTo(xOf(i), yOf(l.T)));
+            ctx.strokeStyle = '#2980b9'; ctx.lineWidth = 2.2;
+            ctx.stroke();
+
+            // Noktalar + etiketler
             layers.forEach((l, i) => {
-                const x = toX(l.T), y = toY(i);
-
-                // Sol etiket (katman adı)
-                ctx.textAlign = 'right'; ctx.fillStyle = '#444'; ctx.font = 'bold 9px monospace';
-                ctx.fillText(l.label, PAD.l - 5, y + 3);
-                ctx.fillStyle = '#999'; ctx.font = '8px monospace';
-                ctx.fillText(l.subLabel, PAD.l - 5, y + 12);
+                const x = xOf(i), y = yOf(l.T);
 
                 // Nokta
-                ctx.beginPath();
-                ctx.arc(x, y, 5, 0, Math.PI * 2);
-                ctx.fillStyle = ['#e53935','#fb8c00','#66bb6a','#42a5f5','#ab47bc'][i];
-                ctx.fill();
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#2980b9'; ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
 
-                // Sağ sıcaklık değeri
-                ctx.textAlign = 'left'; ctx.fillStyle = '#333'; ctx.font = 'bold 9px monospace';
-                ctx.fillText(l.T.toFixed(1) + '°C', x + 7, y + 3);
+                // Sıcaklık etiketi (nokta üstü)
+                ctx.fillStyle = '#1a5276'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+                ctx.fillText(l.T.toFixed(1) + '°C', x, y - 10);
+
+                // X eksen: katman adı
+                ctx.fillStyle = '#444'; ctx.font = '9.5px "Segoe UI", Tahoma, sans-serif';
+                ctx.fillText(l.label, x, PAD.t + plotH + 16);
+                ctx.fillStyle = '#999'; ctx.font = '9px monospace';
+                ctx.fillText(l.sub, x, PAD.t + plotH + 28);
+
+                // Tick
+                ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(x, PAD.t + plotH); ctx.lineTo(x, PAD.t + plotH + 4); ctx.stroke();
             });
 
-            // Çiğlenme noktası işareti
-            const xDew = toX(d.t_dew);
-            if (xDew > PAD.l && xDew < PAD.l + plotW) {
-                ctx.strokeStyle = '#0288d1'; ctx.lineWidth = 1;
-                ctx.setLineDash([3, 3]);
-                ctx.beginPath(); ctx.moveTo(xDew, PAD.t); ctx.lineTo(xDew, PAD.t + plotH); ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.fillStyle = '#0288d1'; ctx.font = '8px monospace'; ctx.textAlign = 'center';
-                ctx.fillText(`Td:${d.t_dew.toFixed(1)}°`, xDew, PAD.t - 4);
-            }
+            // Çerçeve
+            ctx.strokeStyle = '#dde3f0'; ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+            ctx.strokeRect(PAD.l, PAD.t, plotW, plotH);
         }
 
         // ============================================================
@@ -1061,15 +1098,13 @@
                             <button onclick="toggleCharts('charts_${i}')" style="background:none; border:1px solid #c5cae9; color:#3949ab; border-radius:4px; padding:5px 12px; cursor:pointer; font-size:11px; font-weight:600; width:100%;">
                                 📊 Termal Grafikler ▼
                             </button>
-                            <div id="charts_${i}" style="display:none; margin-top:10px; display:none;">
-                                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                                    <div style="flex:1; min-width:280px;">
-                                        <div style="font-size:11px; font-weight:bold; color:#3949ab; margin-bottom:4px; text-align:center;">🌡️ Boru Arası Sıcaklık Dalgası</div>
-                                        <canvas id="wave_${i}" width="320" height="180" style="width:100%; border-radius:4px; background:#fafafa; border:1px solid #e8eaf6;"></canvas>
+                            <div id="charts_${i}" style="display:none; margin-top:10px;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                                    <div>
+                                        <canvas id="grad_${i}" style="display:block; width:100%; border-radius:8px; border:1px solid #dde3f0;"></canvas>
                                     </div>
-                                    <div style="flex:1; min-width:280px;">
-                                        <div style="font-size:11px; font-weight:bold; color:#3949ab; margin-bottom:4px; text-align:center;">📐 Dikey Sıcaklık Gradyanı</div>
-                                        <canvas id="grad_${i}" width="320" height="180" style="width:100%; border-radius:4px; background:#fafafa; border:1px solid #e8eaf6;"></canvas>
+                                    <div>
+                                        <canvas id="wave_${i}" style="display:block; width:100%; border-radius:8px; border:1px solid #dde3f0;"></canvas>
                                     </div>
                                 </div>
                             </div>
