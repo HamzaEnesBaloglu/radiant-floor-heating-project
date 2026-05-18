@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.16.4)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.17.3)</p>
     </div>
 
     <div class="container">
@@ -707,7 +707,7 @@
             for (let k = 0; k <= N; k++) {
                 const xPos  = (k / N) * L;
                 const x_fin = Math.min(xPos, L - xPos);
-                const T = d.t_room + (T_pipe - d.t_room) * Math.cosh(m * x_fin) / Math.cosh(mL2);
+                const T = d.t_room + (T_pipe - d.t_room) * Math.cosh(m * (L/2 - x_fin)) / Math.cosh(mL2);
                 pts.push({ xPos, T });
             }
 
