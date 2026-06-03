@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.17.3)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.1)</p>
     </div>
 
     <div class="container">
@@ -107,6 +107,13 @@
                             <option value = "zemin-kat"> Zemin Kat </option>
                             <option value ="cati-kati"> Çatı Katı </option>
                         </select>
+                        <div id ="zemin_kat_type_group" style="display:none; margin-top:6px;">
+                            <label>Zemin Alti Tipi</label>
+                            <select id="sys_zemin_type" onchange="updateAptFloorInfo()">
+                                <option value="ground"> Toprak Temaslı (10°C)</option>
+                                <option value="garage"> Hava Temaslı/Otopark (5°C)</option>
+                            </select>
+                        </div>
                         <div id="apt_floor_info" style="font-size:10px; color:#2e7d32; font-weight:600; margin-top:4px;">
                             Alt: Komşu daire 20°C (EN 12831)
                         </div>
@@ -274,15 +281,29 @@
         }
 
         function updateAptFloorInfo() {
-            const val = document.getElementById('sys_apt_floor').value;
-            const info = document.getElementById('apt_floor_info');
-            const msgs = {
-                'ara-kat':   { color: '#2e7d32', text: 'Alt: komşu daire 20C (EN 12831)'},
-                'zemin-kat': { color: '#e65100', text: 'Şimdilik 10°C (EN12831)'},
-                'cati-kati': { color: '#e65100', text: 'Şimdilik 20°C'}
-            };
-            info.style.color  = msgs[val].color;
-            info.textContent  = msgs[val].text;
+            const val        = document.getElementById('sys_apt_floor').value;
+            const info       = document.getElementById('apt_floor_info');
+            const zeminGroup = document.getElementById('zemin_kat_type_group');
+
+            if (val === 'ara-kat') {
+                zeminGroup.style.display = 'none';
+                info.style.color = '#2e7d32';
+                info.textContent = 'Alt: daire 20°C (EN12381)'
+            } else if (val === 'zemin-kat') {
+                zeminGroup.style.display = 'block';
+                const zeminType = document.getElementById('sys_zemin_type').value;
+                if (zeminType === 'ground') {
+                    info.style.color = '#e65100';
+                    info.textContent = 'Toprak temasli zemin 10°C (EN12831)';
+                } else {
+                    info.style.color = '#e65100';
+                    info.textContent = 'Hava Temasli/Otopark: 5°C (EN12831)';
+                }
+            }else if (val === 'cati-kati') {
+                zeminGroup.style.display = 'none';
+                info.style.color = '#e65100';
+                info.textContent = 'Bu versionda degil, simdilik 20°C';
+            }
         }
 
         // ============================================================
@@ -976,7 +997,8 @@
                     if (apt_floor === 'ara-kat') {
                         room_t_below = 20;   // EN12831 Isıtılan komşu alan
                     } else if (apt_floor === 'zemin-kat') {
-                        room_t_below = 10; // EN12831 (geçiçi): Toprak Temaslı zemin
+                        const zeminType = document.getElementById('sys_zemin_type').value;
+                        room_t_below = (zeminType === 'ground') ? 10 : 5; //EN12831
                     } else if (apt_floor === 'cati-kati') {
                         room_t_below = 20; // (geçici)
                     }
