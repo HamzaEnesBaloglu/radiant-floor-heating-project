@@ -18,7 +18,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     coverage_ratio_arr = zeros(1, num_rooms);
     surplus_watt_arr = zeros(1, num_rooms);
     
-    % Çiğlenme Noktası ve Radyant Oran Dizileri
+    % Çiğlenme Noktasi ve Radyant Oran Dizileri
     t_dew_arr = zeros(1, num_rooms);
     rad_ratio_arr = zeros(1, num_rooms);
     m_param_arr = zeros(1, num_rooms);
@@ -29,15 +29,15 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
     k_concrete = 1.4; t_concrete = 0.05;
 
-    % YENİ: EKSERJİ ARZI HESABI (Isı Kaynağına Göre)
-    % heat_source: 1=Isı Pompası, 2=Doğalgaz, 3=Elektrikli Direnç, 4=Güneş
+    % YENİ: EKSERJİ ARZI HESABI (Isi Kaynağina Göre)
+    % heat_source: 1=Isi Pompasi, 2=Doğalgaz, 3=Elektrikli Direnç, 4=Güneş
     T0_K       = t_out + 273.15;
     T_water_K  = t_water + 273.15;
 
     switch heat_source
-        case 1  % Isı Pompası
+        case 1  % Isi Pompasi
             e_supply = max(0, (1 - T0_K / T_water_K) * (1 / cop));
-        case 2  % Doğalgaz Kazanı (η_kazан ≈ 0.90)
+        case 2  % Doğalgaz Kazani (η_kazан ≈ 0.90)
             eta_boiler = 0.90;
             e_supply = max(0, (1 - T0_K / T_water_K) / eta_boiler);
         case 3  % Elektrikli Direnç (COP=1 muadili)
@@ -63,13 +63,13 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     sys_t_mean = t_mean_water; 
 
     % BORU MALZEMESİ TABLOSU: [d_out(m), t_pipe(m), k_pipe(W/mK), epsilon(m)]
-    % 1=PEX-a, 2=PEX-AL-PEX, 3=PE-RT, 4=PE-Xa, 5=Bakır
+    % 1=PEX-a, 2=PEX-AL-PEX, 3=PE-RT, 4=PE-Xa17, 5=PE-RT16
     pipe_table = [0.016, 0.002, 0.40,  0.000007;   % 1: PEX-a 16mm
                   0.016, 0.002, 0.45,  0.0000015;  % 2: PEX-AL-PEX 16mm
                   0.016, 0.002, 0.40,  0.000007;   % 3: PE-RT 16mm
                   0.017, 0.002, 0.38,  0.000007;   % 4: PE-Xa 17mm
-                  0.015, 0.001, 380.0, 0.0000015;  % 5: Bakır 15mm
-                  0.0127,0.0015,0.40,  0.000007];  % 6: PEX 12.7mm (Prof.Kilkis ref.)
+                  0.016, 0.002, 0.38,  0.000007;];   % 5: PE-Xa 16mm
+
     pm = max(1, min(5, round(pipe_material)));
     d_out_room   = pipe_table(pm, 1);
     t_pipe_room  = pipe_table(pm, 2);
@@ -81,8 +81,8 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     % DÖŞEME DESENİ TABLOSU (Koschenz & Lehmann 2000, Schnabel & Schlegel 1996)
     % layout_type: 1=Serpantin, 2=Spiral, 3=Çift Serpantin
     % Sütunlar: [length_factor, eta_layout]
-    % length_factor : köşe payı boru uzunluğu çarpanı
-    % eta_layout    : ısı dağılım uniformite katsayısı
+    % length_factor : köşe payi boru uzunluğu çarpani
+    % eta_layout    : isi dağilim uniformite katsayisi
     layout_table = [1.00, 0.95;   % Serpantin
                     1.06, 1.00;   % Spiral
                     1.03, 0.97];  % Çift Serpantin
@@ -91,7 +91,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     total_vol_flow = 0; 
     max_loop_length = 100; 
     
-    % F1 Rakım Düzeltmesi
+    % F1 Rakim Düzeltmesi
     p_ratio = (1 - 2.25577e-5 * altitude)^5.25588;
     F1 = sqrt(p_ratio);
 
@@ -103,12 +103,12 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         dist_to_coll = dist_arr(i); 
         t_below = t_below_arr(i); 
 
-        % Çiğlenme Noktası (Magnus Formülü)
+        % Çiğlenme Noktasi (Magnus Formülü)
         alpha = (17.625 * t_room) / (243.04 + t_room) + log(rh/100);
         t_dew = (243.04 * alpha) / (17.625 - alpha);
         t_dew_arr(i) = t_dew;
 
-        % F2 (Aktif Alan Oranı)
+        % F2 (Aktif Alan Orani)
         F2 = active_area_arr(i) / 100;
         active_room_area = room_area * F2; 
 
@@ -124,13 +124,13 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         q_loss_watt = (a_wall_net * u_wall * wind_factor + window_area * u_window * wind_factor) * (t_room - t_out);
         q_loss_arr(i) = max(0, q_loss_watt); 
 
-        % Dinamik Isı Transfer Katsayıları ve F3 (Hibrit Havalandırma)
-        % ISO 11855-2 correction factor yaklaşımı:
-        % r_total standart koşulda hesaplanır, F1 ve F3 sonuca uygulanır
+        % Dinamik Isi Transfer Katsayilari ve F3 (Hibrit Havalandirma)
+        % ISO 11855-2 correction factor yaklaşimi:
+        % r_total standart koşulda hesaplanir, F1 ve F3 sonuca uygulanir
         F3 = ventilation_arr(i);
         h_rad = 5.5;
-        h_conv_std     = 5.3;                    % Standart koşul (deniz seviyesi, doğal havalandırma)
-        h_total_std    = h_rad + h_conv_std;     % Standart toplam katsayı
+        h_conv_std     = 5.3;                    % Standart koşul (deniz seviyesi, doğal havalandirma)
+        h_total_std    = h_rad + h_conv_std;     % Standart toplam katsayi
         h_total_dynamic = h_rad + (5.3 * F1 * F3); % Gerçek koşul (radyant oran için)
         rad_ratio_arr(i) = (h_rad / h_total_dynamic) * 100;
 
@@ -141,14 +141,14 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         u_surface = 1 / (r_cover + (1 / h_total_std)); % Standart koşulda u_surface
         m_param = sqrt(u_surface / (k_concrete * t_concrete));
         
-        % DÖŞEME DESENİ — oda bazında layout seç
+        % DÖŞEME DESENİ — oda bazinda layout seç
         lt = max(1, min(3, round(layout_type_arr(i))));
         length_factor = layout_table(lt, 1);
         eta_layout    = layout_table(lt, 2);
 
         % Koschenz & Lehmann (2000) Eq. 2.13 — spiral asimetrik fin modeli
         L_fin = spacing / 2;
-        if lt == 2  % Spiral — gidiş/dönüş boruları yan yana, asimetrik sınır koşulu
+        if lt == 2  % Spiral — gidiş/dönüş borulari yan yana, asimetrik sinir kosulu
             mL  = m_param * L_fin;
             mL2 = m_param * (L_fin / 2);
             eta_symmetric  = tanh(mL) / mL;
@@ -170,7 +170,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         t_surf_arr(i) = t_room + (q_flux / h_total_dynamic);
 
         % ODA EKSERJİ TALEBİ (Bejan 1996 — Carnot faktörü)
-        % t_surf_arr(i) burada hesaplandıktan sonra kullanılıyor
+        % t_surf_arr(i) burada hesaplandiktan sonra kullaniliyor
         T_surf_K      = t_surf_arr(i) + 273.15;
         e_bina        = max(0, 1 - T0_K / T_surf_K);
         e_bina_arr(i) = e_bina;
@@ -222,20 +222,20 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         elseif Re < 4000
             f = 0.3164 / (Re^0.25);  % Geçiş bölgesi
         else
-            % Colebrook-White (Swamee-Jain yaklaşımı) — pürüzlülük dahil
+            % Colebrook-White (Swamee-Jain yaklaşimi) — pürüzlülük dahil
             f = 0.25 / (log10(epsilon_room / (3.7 * d_in_room) + 5.74 / (Re^0.9)))^2;
         end
         delta_p_pascal = f * (len_per_zone / d_in_room) * (rho * velocity^2) / 2;
         p_drop_arr(i) = delta_p_pascal / 1000; 
 
-        % 5. ECO-METRİKLER (Aktif alan bazlı)
+        % 5. ECO-METRİKLER (Aktif alan bazli)
         room_energy_kwh = ((q_total * active_room_area) / 1000 * hours) / cop;
         room_energy_arr(i) = room_energy_kwh;
         room_co2_arr(i) = room_energy_kwh * co2_factor;
     end
 
-    % YENİ: SİSTEM GENELİ EKSERJİ METRİKLERİ
-    % Ağırlıklı ortalama — ağırlık: her odanın toplam ısı gücü × aktif alan
+    % SİSTEM GENELİ EKSERJİ METRİKLERİ
+    % Ağirlikli ortalama — ağirlik: her odanin toplam isi gücü × aktif alan
     weights = q_flux_arr .* (area_arr .* (active_area_arr / 100));
     total_weight = sum(weights);
 
@@ -257,7 +257,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     main_velocity = total_vol_flow / cross_area_main;
     
     Re_main = (rho * main_velocity * d_in_main) / mu;
-    % Ana hat: PEX-AL-PEX veya bakır bağımsız olarak epsilon_room kullan
+    % Ana hat: PEX-AL-PEX veya bakir bağimsiz olarak epsilon_room kullan
     if Re_main < 2300
         f_main = 64 / max(Re_main, 1e-5);
     elseif Re_main < 4000
@@ -277,10 +277,14 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     sys_total_energy = sum(room_energy_arr) + pump_energy_kwh;
     sys_total_co2 = sys_total_energy * co2_factor;
 
-    % YENİ: CO2 AZALTMA YÜZDESİ (Referans Değer 1.25 kg/kWh)
+    % CO2 AZALTMA YÜZDESİ (Referans Değer 1.25 kg/kWh)
     reference_co2_factor = 1.25;
     sys_co2_reduction = (1 - (co2_factor / reference_co2_factor)) * 100;
     if sys_co2_reduction < 0
         sys_co2_reduction = 0;
     end
+
+    % Apartman Oda Kati Hesaplari (Değişti) Bu kisimda evin cati kati mi zemin kat mi yoksa ara kat mi olacagini kullanicidan alip bu verileri 
+    % Apartmanin hangi katinda olacagina da kullanicidan alinan veriler ile matlaba aktarilan sabit degerler ile bir matris olusturulur
+    % Ayrica apartman secenegindeki alt kat oda sicakligi secenegi de kaldirilacak.
 end

@@ -101,9 +101,16 @@
                         </select>
                     </div>
                     <div class="input-group" id="global_t_below_group">
-                        <label>Tüm Odalar İçin Alt Kat Sıc. (°C)</label>
-                        <input type="number" id="sys_t_below_global" value="20" step="1">
-                    </div>
+                        <label>Daire Konumu</label>
+                        <select id = "sys_apt_floor" onchange="updateAptFloorInfo()">
+                            <option value ="ara-kat" selected> Ara Kat </option>
+                            <option value = "zemin-kat"> Zemin Kat </option>
+                            <option value ="cati-kati"> Çatı Katı </option>
+                        </select>
+                        <div id="apt_floor_info" style="font-size:10px; color:#2e7d32; font-weight:600; margin-top:4px;">
+                            Alt: Komşu daire 20°C (EN 12831)
+                        </div>
+                    </div> 
                 </div>
             </div>
 
@@ -127,12 +134,11 @@
                     <div class="input-group">
                         <label style="color:var(--academic);">Oda Borusu Malzemesi</label>
                         <select id="sys_pipe_material" style="border-color:var(--academic);">
-                            <option value="1" selected>PEX-a 16mm (ε=0.007mm)</option>
-                            <option value="2">PEX-AL-PEX 16mm (ε=0.0015mm)</option>
-                            <option value="3">PE-RT 16mm (ε=0.007mm)</option>
-                            <option value="4">PE-Xa 17mm (ε=0.007mm)</option>
-                            <option value="5">Bakır 15mm (ε=0.0015mm)</option>
-                            <option value="6">PEX 12.7mm (Kilkis ref.)</option>
+                            <option value="1" selected>PEX-a 16mm</option>
+                            <option value="2">PEX-AL-PEX 16mm</option>
+                            <option value="3">PE-RT 16mm</option>
+                            <option value="4">PE-Xa 17mm</option>
+                            <option value="5">PE-Xa 16mm</option>
                         </select>
                     </div>
                 </div>
@@ -265,6 +271,18 @@
                 globalTBelowGroup.style.display = 'none';
                 roomFloorSelects.forEach(el => el.style.display = 'block');
             }
+        }
+
+        function updateAptFloorInfo() {
+            const val = document.getElementById('sys_apt_floor').value;
+            const info = document.getElementById('apt_floor_info');
+            const msgs = {
+                'ara-kat':   { color: '#2e7d32', text: 'Alt: komşu daire 20C (EN 12831)'},
+                'zemin-kat': { color: '#e65100', text: 'Şimdilik 10°C (EN12831)'},
+                'cati-kati': { color: '#e65100', text: 'Şimdilik 20°C'}
+            };
+            info.style.color  = msgs[val].color;
+            info.textContent  = msgs[val].text;
         }
 
         // ============================================================
@@ -944,15 +962,25 @@
             const roomNames  = [];
             const en1264Limits = [];
             const bldType        = document.getElementById('sys_bld_type').value;
-            const global_t_below = parseFloat(document.getElementById('sys_t_below_global').value);
+            const apt_floor = document.getElementById('sys_apt_floor')
+                            ? document.getElementById('sys_apt_floor').value
+                            : 'ara-kat'; 
 
             roomCards.forEach(card => {
                 roomNames.push(card.querySelector('.r-name').value);
                 en1264Limits.push(parseFloat(card.querySelector('.r-en-type').value));
 
                 let room_t_below = 20;
+
                 if (bldType === 'apartment') {
-                    room_t_below = global_t_below;
+                    if (apt_floor === 'ara-kat') {
+                        room_t_below = 20;   // EN12831 Isıtılan komşu alan
+                    } else if (apt_floor === 'zemin-kat') {
+                        room_t_below = 10; // EN12831 (geçiçi): Toprak Temaslı zemin
+                    } else if (apt_floor === 'cati-kati') {
+                        room_t_below = 20; // (geçici)
+                    }
+                    
                 } else {
                     const floor_type = card.querySelector('.r-floor').value;
                     if (floor_type === "ground")  room_t_below = 10;
