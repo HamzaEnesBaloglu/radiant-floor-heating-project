@@ -1,5 +1,5 @@
 function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water, u_ceiling_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.2)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.3)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -121,9 +121,14 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
         a_wall_gross = ext_wall_len * room_height;
         a_wall_net = max(0, a_wall_gross - window_area);
-        q_loss_watt = (a_wall_net * u_wall * wind_factor + window_area * u_window * wind_factor) * (t_room - t_out);
+
+        q_trans = (a_wall_net * u_wall * wind_factor + window_area * u_window * wind_factor) * (t_room - t_out);
         q_loss_ceiling = u_ceiling_arr(i) * wind_factor * (t_room - t_out);
-        q_loss_watt = q_loss_watt + max(0, q_loss_ceiling);
+
+        room_vol = room_area * room_height;
+        q_vent = 0.34 * 0.5 * room_vol * (t_room - t_out);
+
+        q_loss_watt = q_trans + max(0, q_loss_ceiling) + max(0, q_vent);
         q_loss_arr(i) = max(0, q_loss_watt); 
 
         % Dinamik Isi Transfer Katsayilari ve F3 (Hibrit Havalandirma)
@@ -137,7 +142,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         rad_ratio_arr(i) = (h_rad / h_total_dynamic) * 100;
 
         % 2. TERMAL HESAPLAR VE KANAT VERİMİ
-        r_pipe = t_pipe_room / k_pipe;
+        r_pipe = spacing * log(d_out_room / d_in_room) / (2 * pi * k_pipe); 
         r_up = r_pipe + r_concrete + r_cover;
         r_total = r_up + (1 / h_total_std);     % Standart koşulda r_total
         u_surface = 1 / (r_cover + (1 / h_total_std)); % Standart koşulda u_surface
@@ -231,7 +236,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         p_drop_arr(i) = delta_p_pascal / 1000; 
 
         % 5. ECO-METRİKLER (Aktif alan bazli)
-        room_energy_kwh = ((q_total * active_room_area) / 1000 * hours) / cop;
+        room_energy_kwh = (q_loss_watt / 1000 * hours) / cop;
         room_energy_arr(i) = room_energy_kwh;
         room_co2_arr(i) = room_energy_kwh * co2_factor;
     end
@@ -247,10 +252,9 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         sys_psi_r = 0;
     end
 
-    % η_I = Ortalama fin verimi × (1/COP) × dağıtım verimi (0.85 sabit)
+    % η_I = (1/COP) × dağıtım verimi (0.85 sabit)
     eta_dist  = 0.85;
-    avg_fin   = sum(fin_eff_arr .* weights) / max(total_weight, 1e-9);
-    sys_eta_I = avg_fin * (1 / cop) * eta_dist;
+    sys_eta_I = (1 / cop) * eta_dist;
 
     % 6. ANA HAT VE POMPA HESABI
     t_pipe_main = 0.0034; 

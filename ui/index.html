@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.2)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.3)</p>
     </div>
 
     <div class="container">
@@ -874,9 +874,8 @@
             ctx.textAlign = 'left';
             ctx.fillText('Sıcaklık Düşüşü (°C)', legX + 20, legY + 9);
 
-            // Katman verileri — 4 nokta, referans görselle birebir
             const r_conc   = 0.05 / 1.4;
-            const t_screed = d.t_surf + d.q_flux * r_conc;
+            const t_screed = d.t_surf + d.q_flux * (d.r_cover + r_conc);
 
             const layers = [
                 { label: 'Su Sıcaklığı', sub: '(T_w)', T: d.t_water },
@@ -999,7 +998,7 @@
             const apt_floor = document.getElementById('sys_apt_floor')
                             ? document.getElementById('sys_apt_floor').value
                             : 'ara-kat';
-            const u_ceiling = (apt_floor === 'cati_kati')
+            const u_ceiling = (apt_floor === 'cati-kati')
                             ? parseFloat(document.getElementById('sys_u_ceiling').value)
                             : 0.0;
 
