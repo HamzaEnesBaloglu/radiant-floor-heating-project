@@ -3,7 +3,7 @@ from flask_cors import CORS
 import matlab.engine
 import os
 
-#Versiyon 0.18.1
+#Versiyon v0.18.2
 
 app = Flask(__name__)
 CORS(app)
@@ -103,22 +103,23 @@ def calculate():
     if not rooms:
         return jsonify({"status": "error", "message": "En az bir oda eklemelisiniz."}), 400
 
-    t_room_list = [float(r['t_room']) for r in rooms]
-    spacing_list = [float(r['spacing']) for r in rooms]
-    r_cover_list = [float(r['r_cover']) for r in rooms]
-    area_list = [float(r['room_area']) for r in rooms]
-    dist_list = [float(r['dist_to_collector']) for r in rooms]
-    t_below_list = [float(r['t_below']) for r in rooms] 
+    t_room_list       = [float(r['t_room']) for r in rooms]
+    spacing_list      = [float(r['spacing']) for r in rooms]
+    r_cover_list      = [float(r['r_cover']) for r in rooms]
+    area_list         = [float(r['room_area']) for r in rooms]
+    dist_list         = [float(r['dist_to_collector']) for r in rooms]
+    t_below_list      = [float(r['t_below']) for r in rooms] 
     
-    ventilation_list = [float(r['ventilation']) for r in rooms]
-    active_area_list = [float(r['active_area']) for r in rooms]
+    ventilation_list  = [float(r['ventilation']) for r in rooms]
+    active_area_list  = [float(r['active_area']) for r in rooms]
     
     ext_wall_len_list = [float(r['ext_wall_len']) for r in rooms]
-    room_height_list = [float(r['room_height']) for r in rooms]
-    window_area_list = [float(r['window_area']) for r in rooms]
-    u_wall_list = [float(r['u_wall']) for r in rooms]
-    u_window_list = [float(r['u_window']) for r in rooms]
-    layout_type_list = [float(r.get('layout_type', 1.0)) for r in rooms]
+    room_height_list  = [float(r['room_height']) for r in rooms]
+    window_area_list  = [float(r['window_area']) for r in rooms]
+    u_wall_list       = [float(r['u_wall']) for r in rooms]
+    u_window_list     = [float(r['u_window']) for r in rooms]
+    layout_type_list  = [float(r.get('layout_type', 1.0)) for r in rooms]
+    u_ceiling_list    = [float(r.get('u_ceiling', 0.0)) for r in rooms]
 
     try:
         q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr = eng.floor_heating_model(
@@ -129,6 +130,7 @@ def calculate():
             matlab.double(ext_wall_len_list), matlab.double(room_height_list), matlab.double(window_area_list),
             matlab.double(u_wall_list), matlab.double(u_window_list), pipe_material,
             matlab.double(layout_type_list), heat_source, delta_T_water,
+            matlab.double(u_ceiling_list),
             nargout=31
         )
         

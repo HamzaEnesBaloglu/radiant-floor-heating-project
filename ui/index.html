@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.1)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.2)</p>
     </div>
 
     <div class="container">
@@ -112,6 +112,15 @@
                             <select id="sys_zemin_type" onchange="updateAptFloorInfo()">
                                 <option value="ground"> Toprak Temaslı (10°C)</option>
                                 <option value="garage"> Hava Temaslı/Otopark (5°C)</option>
+                            </select>
+                        </div>
+                        <div id="cati_kat_type_group" style="display:none; margin-top:6px;">
+                            <label>Çatı/Tavan Yalıtımı</label>
+                            <select id="sys_u_ceiling">
+                                <option value="2.5">Yalıtımsız Düz Çatı (U~2.50)</option>
+                                <option value="0.8">Minimum Yalıtım (U~0.80)</option>
+                                <option value="0.4" selected>TS 825 Uyumlu (U~0.40)</option>
+                                <option value="0.2">İyi Yalıtımlı (U~0.20)</option>
                             </select>
                         </div>
                         <div id="apt_floor_info" style="font-size:10px; color:#2e7d32; font-weight:600; margin-top:4px;">
@@ -284,13 +293,16 @@
             const val        = document.getElementById('sys_apt_floor').value;
             const info       = document.getElementById('apt_floor_info');
             const zeminGroup = document.getElementById('zemin_kat_type_group');
+            const catiGroup  = document.getElementById('cati_kat_type_group');
 
             if (val === 'ara-kat') {
                 zeminGroup.style.display = 'none';
+                catiGroup.style.display = 'none';
                 info.style.color = '#2e7d32';
-                info.textContent = 'Alt: daire 20°C (EN12381)'
+                info.textContent = 'Alt: daire 20°C (EN12381)';
             } else if (val === 'zemin-kat') {
                 zeminGroup.style.display = 'block';
+                catiGroup.style.display = 'none';
                 const zeminType = document.getElementById('sys_zemin_type').value;
                 if (zeminType === 'ground') {
                     info.style.color = '#e65100';
@@ -301,8 +313,9 @@
                 }
             }else if (val === 'cati-kati') {
                 zeminGroup.style.display = 'none';
-                info.style.color = '#e65100';
-                info.textContent = 'Bu versionda degil, simdilik 20°C';
+                catiGroup.style.display = 'block';
+                info.style.color = '#1565c0';
+                info.textContent = 'Tavan Kaybı modele dahil';
             }
         }
 
@@ -985,7 +998,10 @@
             const bldType        = document.getElementById('sys_bld_type').value;
             const apt_floor = document.getElementById('sys_apt_floor')
                             ? document.getElementById('sys_apt_floor').value
-                            : 'ara-kat'; 
+                            : 'ara-kat';
+            const u_ceiling = (apt_floor === 'cati_kati')
+                            ? parseFloat(document.getElementById('sys_u_ceiling').value)
+                            : 0.0;
 
             roomCards.forEach(card => {
                 roomNames.push(card.querySelector('.r-name').value);
@@ -1000,7 +1016,7 @@
                         const zeminType = document.getElementById('sys_zemin_type').value;
                         room_t_below = (zeminType === 'ground') ? 10 : 5; //EN12831
                     } else if (apt_floor === 'cati-kati') {
-                        room_t_below = 20; // (geçici)
+                        room_t_below = 20; // EN 12831 Isıtılan komşu alan
                     }
                     
                 } else {
@@ -1025,7 +1041,8 @@
                     window_area:        parseFloat(card.querySelector('.r-window').value),
                     u_wall:             parseFloat(card.querySelector('.r-u-wall').value),
                     u_window:           parseFloat(card.querySelector('.r-u-window').value),
-                    layout_type:        parseFloat(card.querySelector('.r-layout').value)
+                    layout_type:        parseFloat(card.querySelector('.r-layout').value),
+                    u_ceiling:          u_ceiling
                 });
             });
 
