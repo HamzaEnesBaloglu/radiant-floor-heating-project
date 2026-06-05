@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Global Radiant Floor Solver</title>
     <style>
         :root { --bg: #f4f7f9; --panel: #ffffff; --primary: #0056b3; --text: #333; --border: #e1e4e8; --success: #2e7d32; --eco: #4caf50; --danger: #d32f2f; --warning: #ff9800; --info: #0288d1; --academic: #8e24aa;}
@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.3)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.4)</p>
     </div>
 
     <div class="container">
@@ -299,7 +299,7 @@
                 zeminGroup.style.display = 'none';
                 catiGroup.style.display = 'none';
                 info.style.color = '#2e7d32';
-                info.textContent = 'Alt: daire 20°C (EN12381)';
+                info.textContent = 'Alt: daire 20°C (EN 12831)';
             } else if (val === 'zemin-kat') {
                 zeminGroup.style.display = 'block';
                 catiGroup.style.display = 'none';
@@ -878,10 +878,10 @@
             const t_screed = d.t_surf + d.q_flux * (d.r_cover + r_conc);
 
             const layers = [
-                { label: 'Su Sıcaklığı', sub: '(T_w)', T: d.t_water },
-                { label: 'Şap İçi',      sub: '(T_c)', T: t_screed  },
-                { label: 'Zemin Yüzeyi', sub: '(T_s)', T: d.t_surf  },
-                { label: 'Oda Havası',   sub: '(T_i)', T: d.t_room  },
+                { label: 'Ort. Su Sıcaklığı', sub: '(T_mean)', T: d.t_mean },
+                { label: 'Şap İçi',           sub: '(T_c)', T: t_screed  },
+                { label: 'Zemin Yüzeyi',      sub: '(T_s)', T: d.t_surf  },
+                { label: 'Oda Havası',        sub: '(T_i)', T: d.t_room  },
             ];
 
             const NL    = layers.length;

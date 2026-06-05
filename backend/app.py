@@ -3,7 +3,7 @@ from flask_cors import CORS
 import matlab.engine
 import os
 
-#Versiyon v0.18.3
+#Versiyon v0.18.4
 
 app = Flask(__name__)
 CORS(app)
@@ -29,15 +29,16 @@ def validate_inputs(data):
         except (TypeError, ValueError):
             errors.append(f"{label}: geçerli bir sayı değil.")
 
-    rng(data.get('t_water'),      25,   60,   'Kazan su sıcaklığı (°C)')
-    rng(data.get('r_insulation'), 0.5,  5.0,  'Alt yalıtım R-değeri')
-    rng(data.get('dist_main'),    1,    50,   'Kazan→Kollektör mesafesi (m)')
-    rng(data.get('altitude'),     0,    3000, 'Rakım (m)')
-    rng(data.get('rh'),           10,   100,  'Bağıl nem (%)')
-    rng(data.get('cop'),          1.0,  7.0,  'COP')
-    rng(data.get('hours'),        500,  8760, 'Yıllık çalışma saati')
-    rng(data.get('co2_factor'),   0.05, 2.0,  'CO2 faktörü (kg/kWh)')
-    rng(data.get('pipe_material'), 1, 6, 'Boru malzemesi (1-6)')
+    rng(data.get('t_water'),        25,   60,   'Kazan su sıcaklığı (°C)')
+    rng(data.get('r_insulation'),   0.5,  5.0,  'Alt yalıtım R-değeri')
+    rng(data.get('dist_main'),      1,    50,   'Kazan→Kollektör mesafesi (m)')
+    rng(data.get('altitude'),       0,    3000, 'Rakım (m)')
+    rng(data.get('rh'),             10,   100,  'Bağıl nem (%)')
+    rng(data.get('cop'),            1.0,  7.0,  'COP')
+    rng(data.get('hours'),          500,  8760, 'Yıllık çalışma saati')
+    rng(data.get('co2_factor'),     0.05, 2.0,  'CO2 faktörü (kg/kWh)')
+    rng(data.get('pipe_material'),  1, 5, 'Boru malzemesi (1-5)')
+    rng(data.get('delta_T_water'),  2, 20, 'Su Sıcaklık Farkı (ΔT) (°C)')
 
     rooms = data.get('rooms', [])
     for i, room in enumerate(rooms):

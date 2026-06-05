@@ -1,5 +1,5 @@
 function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water, u_ceiling_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.3)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.4)
 
     num_rooms = length(t_room_arr);
     q_flux_arr = zeros(1, num_rooms);
@@ -144,7 +144,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         % 2. TERMAL HESAPLAR VE KANAT VERİMİ
         r_pipe = spacing * log(d_out_room / d_in_room) / (2 * pi * k_pipe); 
         r_up = r_pipe + r_concrete + r_cover;
-        r_total = r_up + (1 / h_total_std);     % Standart koşulda r_total
+        r_total = r_up + (1 / h_total_dynamic);
         u_surface = 1 / (r_cover + (1 / h_total_std)); % Standart koşulda u_surface
         m_param = sqrt(u_surface / (k_concrete * t_concrete));
         
@@ -170,7 +170,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         fin_eff_arr(i) = fin_efficiency;
         m_param_arr(i) = m_param;
 
-        q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency * eta_layout * F1 * F3;
+        q_flux = ((t_mean_water - t_room) / r_total) * fin_efficiency * eta_layout;
 
         q_flux_arr(i) = q_flux;
         
@@ -236,7 +236,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         p_drop_arr(i) = delta_p_pascal / 1000; 
 
         % 5. ECO-METRİKLER (Aktif alan bazli)
-        room_energy_kwh = (q_loss_watt / 1000 * hours) / cop;
+        room_energy_kwh = (q_total * active_room_area / 1000 * hours) / cop;
         room_energy_arr(i) = room_energy_kwh;
         room_co2_arr(i) = room_energy_kwh * co2_factor;
     end
@@ -289,8 +289,4 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     if sys_co2_reduction < 0
         sys_co2_reduction = 0;
     end
-
-    % Apartman Oda Kati Hesaplari (Değişti) Bu kisimda evin cati kati mi zemin kat mi yoksa ara kat mi olacagini kullanicidan alip bu verileri 
-    % Apartmanin hangi katinda olacagina da kullanicidan alinan veriler ile matlaba aktarilan sabit degerler ile bir matris olusturulur
-    % Ayrica apartman secenegindeki alt kat oda sicakligi secenegi de kaldirilacak.
 end
