@@ -3,7 +3,7 @@ from flask_cors import CORS
 import matlab.engine
 import os
 
-#Versiyon v0.18.4
+#Versiyon v0.18.5
 
 app = Flask(__name__)
 CORS(app)
@@ -37,20 +37,20 @@ def validate_inputs(data):
     rng(data.get('cop'),            1.0,  7.0,  'COP')
     rng(data.get('hours'),          500,  8760, 'Yıllık çalışma saati')
     rng(data.get('co2_factor'),     0.05, 2.0,  'CO2 faktörü (kg/kWh)')
-    rng(data.get('pipe_material'),  1, 5, 'Boru malzemesi (1-5)')
-    rng(data.get('delta_T_water'),  2, 20, 'Su Sıcaklık Farkı (ΔT) (°C)')
+    rng(data.get('pipe_material'),  1, 5,       'Boru malzemesi (1-5)')
+    rng(data.get('delta_T_water'),  2, 20,      'Su Sıcaklık Farkı (ΔT) (°C)')
 
     rooms = data.get('rooms', [])
     for i, room in enumerate(rooms):
         name = f"Oda {i+1}"
-        rng(room.get('room_area'),    2,    200,  f'{name} — Brüt alan (m²)')
-        rng(room.get('t_room'),       15,   30,   f'{name} — İç sıcaklık (°C)')
-        rng(room.get('spacing'),      0.05, 0.30, f'{name} — Boru aralığı (m)')
-        rng(room.get('dist_to_collector'), 1, 30, f'{name} — Kollektöre mesafe (m)')
-        rng(room.get('active_area'),  10,   100,  f'{name} — Aktif alan (%)')
-        rng(room.get('ext_wall_len'), 0,    30,   f'{name} — Cephe uzunluğu (m)')
-        rng(room.get('room_height'),  2.2,  5.0,  f'{name} — Oda yüksekliği (m)')
-        rng(room.get('window_area'),  0,    50,   f'{name} — Cam alanı (m²)')
+        rng(room.get('room_area'),         2,    200,  f'{name} — Brüt alan (m²)')
+        rng(room.get('t_room'),            15,   30,   f'{name} — İç sıcaklık (°C)')
+        rng(room.get('spacing'),           0.05, 0.30, f'{name} — Boru aralığı (m)')
+        rng(room.get('dist_to_collector'), 1, 30,      f'{name} — Kollektöre mesafe (m)')
+        rng(room.get('active_area'),       10,   100,  f'{name} — Aktif alan (%)')
+        rng(room.get('ext_wall_len'),      0,    30,   f'{name} — Cephe uzunluğu (m)')
+        rng(room.get('room_height'),       2.2,  5.0,  f'{name} — Oda yüksekliği (m)')
+        rng(room.get('window_area'),       0,    50,   f'{name} — Cam alanı (m²)')
 
         # Çapraz: cam alanı > duvar brüt alanı
         try:
@@ -63,8 +63,11 @@ def validate_inputs(data):
 
         # Çapraz: iç sıcaklık >= kazan suyu
         try:
-            if float(room.get('t_room', 0)) >= float(data.get('t_water', 999)):
-                errors.append(f"{name} — İç sıcaklık, kazan suyu sıcaklığına eşit veya büyük: ısıtma yapılamaz.")
+            t_water = float(data.get('t_water', 999))
+            delta_t = float(data.get('delta_T_water', 5))
+            t_return = t_water - delta_t
+            if float(room.get('t_room', 0)) >= t_return:
+                errors.append(f"{name} - Dönüş suyu sıcaklığı ({t_return}°C), iç sıcaklıktan düşük veya eşit olamaz (Isıtma imkansız).")
         except (TypeError, ValueError):
             pass
 

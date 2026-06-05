@@ -1,27 +1,27 @@
 function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water, u_ceiling_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.4)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.5)
 
-    num_rooms = length(t_room_arr);
-    q_flux_arr = zeros(1, num_rooms);
-    t_surf_arr = zeros(1, num_rooms);
-    q_down_arr = zeros(1, num_rooms);
-    q_total_arr = zeros(1, num_rooms);
-    len_per_zone_arr = zeros(1, num_rooms);
-    p_drop_arr = zeros(1, num_rooms);
-    room_energy_arr = zeros(1, num_rooms);
-    room_co2_arr = zeros(1, num_rooms);
-    q_loss_arr = zeros(1, num_rooms);
-    num_zones_arr = zeros(1, num_rooms);
-    flow_lpm_arr = zeros(1, num_rooms);
-    fin_eff_arr = zeros(1, num_rooms); 
-    re_arr = zeros(1, num_rooms);      
+    num_rooms          = length(t_room_arr);
+    q_flux_arr         = zeros(1, num_rooms);
+    t_surf_arr         = zeros(1, num_rooms);
+    q_down_arr         = zeros(1, num_rooms);
+    q_total_arr        = zeros(1, num_rooms);
+    len_per_zone_arr   = zeros(1, num_rooms);
+    p_drop_arr         = zeros(1, num_rooms);
+    room_energy_arr    = zeros(1, num_rooms);
+    room_co2_arr       = zeros(1, num_rooms);
+    q_loss_arr         = zeros(1, num_rooms);
+    num_zones_arr      = zeros(1, num_rooms);
+    flow_lpm_arr       = zeros(1, num_rooms);
+    fin_eff_arr        = zeros(1, num_rooms); 
+    re_arr             = zeros(1, num_rooms);      
     coverage_ratio_arr = zeros(1, num_rooms);
-    surplus_watt_arr = zeros(1, num_rooms);
+    surplus_watt_arr   = zeros(1, num_rooms);
     
     % Çiğlenme Noktasi ve Radyant Oran Dizileri
-    t_dew_arr = zeros(1, num_rooms);
+    t_dew_arr     = zeros(1, num_rooms);
     rad_ratio_arr = zeros(1, num_rooms);
-    m_param_arr = zeros(1, num_rooms);
+    m_param_arr   = zeros(1, num_rooms);
 
     % YENİ: EKSERJİ DİZİLERİ
     e_bina_arr = zeros(1, num_rooms);
@@ -31,8 +31,8 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
     % YENİ: EKSERJİ ARZI HESABI (Isi Kaynağina Göre)
     % heat_source: 1=Isi Pompasi, 2=Doğalgaz, 3=Elektrikli Direnç, 4=Güneş
-    T0_K       = t_out + 273.15;
-    T_water_K  = t_water + 273.15;
+    T0_K            = t_out + 273.15;
+    T_water_K       = t_water + 273.15;
 
     switch heat_source
         case 1  % Isi Pompasi
@@ -68,7 +68,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
                   0.016, 0.002, 0.45,  0.0000015;  % 2: PEX-AL-PEX 16mm
                   0.016, 0.002, 0.40,  0.000007;   % 3: PE-RT 16mm
                   0.017, 0.002, 0.38,  0.000007;   % 4: PE-Xa 17mm
-                  0.016, 0.002, 0.38,  0.000007;];   % 5: PE-Xa 16mm
+                  0.016, 0.002, 0.38,  0.000007;]; % 5: PE-Xa 16mm
 
     pm = max(1, min(5, round(pipe_material)));
     d_out_room   = pipe_table(pm, 1);
@@ -206,10 +206,10 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
         end
 
         % 4. ZONLAMA VE DEBİ
-        total_pipe_length = ((active_room_area / spacing) + (2 * dist_to_coll)) * length_factor;
-        num_zones = ceil(max(total_pipe_length, 1e-5) / max_loop_length);
+        room_base_length = (active_room_area / spacing) * length_factor;
+        num_zones = ceil(max(room_base_length, 1e-5) / max_loop_length);
         num_zones_arr(i) = num_zones;
-        len_per_zone = total_pipe_length / num_zones;
+        len_per_zone = (room_base_length / num_zones) + (2 * dist_to_coll);
         len_per_zone_arr(i) = len_per_zone;
 
         % Dinamik cp ve rho burada işin içine girer:
@@ -257,7 +257,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     sys_eta_I = (1 / cop) * eta_dist;
 
     % 6. ANA HAT VE POMPA HESABI
-    t_pipe_main = 0.0034; 
+    t_pipe_main = 0.0034;
     d_in_main = d_out_main - (2 * t_pipe_main);
     cross_area_main = pi * (d_in_main^2) / 4;
     main_velocity = total_vol_flow / cross_area_main;

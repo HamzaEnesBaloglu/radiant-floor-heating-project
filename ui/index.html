@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.4)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.5)</p>
     </div>
 
     <div class="container">
@@ -356,6 +356,7 @@
             bindV('eco_cop',      v => rangeCk(v, 1.0, 7.0, '',   'COP'));
             bindV('eco_hours',    v => rangeCk(v, 500, 8760, 'sa', 'Çalışma saati'));
             bindV('eco_co2',      v => rangeCk(v, 0.05, 2.0, 'kg/kWh', 'CO2 faktörü'));
+            bindV('sys_delta_T',  v => rangeCk(v, 2, 20, '°C', 'Delta_T_Su'));
         }
 
         function bindV(id, fn) {
@@ -375,14 +376,14 @@
         function bindRoomValidators(card) {
             const q = cls => card.querySelector(cls);
 
-            attachValidator(q('.r-area'),     v => rangeCk(v, 2, 200, 'm²', 'Brüt alan'));
-            attachValidator(q('.r-temp'),     v => rangeCk(v, 15, 30, '°C', 'İç sıcaklık'));
-            attachValidator(q('.r-spacing'),  v => rangeCk(v, 0.05, 0.30, 'm', 'Boru aralığı'));
-            attachValidator(q('.r-dist'),     v => rangeCk(v, 1, 30, 'm', 'Kollektöre mesafe'));
-            attachValidator(q('.r-active-area'), v => rangeCk(v, 10, 100, '%', 'Aktif alan'));
-            attachValidator(q('.r-ext-wall'), v => rangeCk(v, 0, 30, 'm', 'Cephe uzunluğu'));
-            attachValidator(q('.r-height'),   v => rangeCk(v, 2.2, 5.0, 'm', 'Oda yüksekliği'));
-            attachValidator(q('.r-window'),   v => rangeCk(v, 0, 50, 'm²', 'Cam alanı'));
+            attachValidator(q('.r-area'),        v => rangeCk(v, 2, 200,     'm²', 'Brüt alan'));
+            attachValidator(q('.r-temp'),        v => rangeCk(v, 15, 30,     '°C', 'İç sıcaklık'));
+            attachValidator(q('.r-spacing'),     v => rangeCk(v, 0.05, 0.30, 'm',  'Boru aralığı'));
+            attachValidator(q('.r-dist'),        v => rangeCk(v, 1, 30,      'm',  'Kollektöre mesafe'));
+            attachValidator(q('.r-active-area'), v => rangeCk(v, 10, 100,    '%',  'Aktif alan'));
+            attachValidator(q('.r-ext-wall'),    v => rangeCk(v, 0, 30,      'm',  'Cephe uzunluğu'));
+            attachValidator(q('.r-height'),      v => rangeCk(v, 2.2, 5.0,   'm',  'Oda yüksekliği'));
+            attachValidator(q('.r-window'),      v => rangeCk(v, 0, 50,      'm²', 'Cam alanı'));
 
             // Çapraz kontrol: cam alanı > duvar brüt alanı
             const crossCheck = () => {
@@ -430,14 +431,15 @@
 
             // Global alanlar
             const checks = [
-                ['sys_t_water',   25, 60,   '°C',      'Kazan su sıcaklığı'],
-                ['sys_altitude',   0, 3000,  'm',       'Rakım'],
-                ['sys_rh',        10, 100,   '%',       'Bağıl nem'],
-                ['sys_r_ins',    0.5, 5.0,   '',        'Alt yalıtım R-değeri'],
-                ['sys_dist_main',  1, 50,    'm',       'Kazan→Kollektör mesafesi'],
-                ['eco_cop',      1.0, 7.0,   '',        'COP'],
-                ['eco_hours',    500, 8760,  ' sa',     'Yıllık çalışma saati'],
-                ['eco_co2',     0.05, 2.0,   ' kg/kWh', 'CO2 faktörü'],
+                ['sys_t_water',    25, 60,    '°C',      'Kazan su sıcaklığı'],
+                ['sys_altitude',   0, 3000,   'm',       'Rakım'],
+                ['sys_rh',         10, 100,   '%',       'Bağıl nem'],
+                ['sys_r_ins',      0.5, 5.0,  '',        'Alt yalıtım R-değeri'],
+                ['sys_dist_main',  1, 50,     'm',       'Kazan→Kollektör mesafesi'],
+                ['eco_cop',        1.0, 7.0,  '',        'COP'],
+                ['eco_hours',      500, 8760, ' sa',     'Yıllık çalışma saati'],
+                ['eco_co2',        0.05, 2.0, ' kg/kWh', 'CO2 faktörü'],
+                ['sys_delta_T',    2, 20,     '°C',      'Delta-T Su (°C)'],
             ];
             checks.forEach(([id, min, max, unit, label]) => {
                 const v = parseFloat(document.getElementById(id).value);
@@ -752,7 +754,9 @@
             const L     = d.spacing;
             const m     = d.mParam;
             const mL2   = m * (L / 2);
-            const T_pipe = d.t_surf;
+
+            const delta_ripple = d.q_flux * 0.015;
+            const T_pipe = d.t_surf + delta_ripple;
 
             const N = 300;
             const pts = [];
@@ -973,34 +977,37 @@
             const calculated_t_out = base_temp - (altitude * 0.0065);
 
             const data = {
-                t_water:      parseFloat(document.getElementById('sys_t_water').value),
-                glycol:       parseFloat(document.getElementById('sys_glycol').value),
+                t_water:       parseFloat(document.getElementById('sys_t_water').value),
+                glycol:        parseFloat(document.getElementById('sys_glycol').value),
                 pipe_material: parseFloat(document.getElementById('sys_pipe_material').value),
-                r_insulation: parseFloat(document.getElementById('sys_r_ins').value),
-                dist_main:    parseFloat(document.getElementById('sys_dist_main').value),
-                d_out_main:   parseFloat(document.getElementById('sys_d_out_main').value),
-                climate_zone: base_temp,
-                altitude:     altitude,
-                rh:           parseFloat(document.getElementById('sys_rh').value),
-                wind_factor:  parseFloat(document.getElementById('sys_wind').value),
-                cop:          parseFloat(document.getElementById('eco_cop').value),
-                hours:        parseFloat(document.getElementById('eco_hours').value),
-                co2_factor:   parseFloat(document.getElementById('eco_co2').value),
+                r_insulation:  parseFloat(document.getElementById('sys_r_ins').value),
+                dist_main:     parseFloat(document.getElementById('sys_dist_main').value),
+                d_out_main:    parseFloat(document.getElementById('sys_d_out_main').value),
+                climate_zone:  base_temp,
+                altitude:      altitude,
+                rh:            parseFloat(document.getElementById('sys_rh').value),
+                wind_factor:   parseFloat(document.getElementById('sys_wind').value),
+                cop:           parseFloat(document.getElementById('eco_cop').value),
+                hours:         parseFloat(document.getElementById('eco_hours').value),
+                co2_factor:    parseFloat(document.getElementById('eco_co2').value),
                 heat_source:   parseFloat(document.getElementById('eco_heat_source').value),
                 delta_T_water: parseFloat(document.getElementById('sys_delta_T').value),
                 rooms: []
             };
 
-            const roomCards  = document.querySelectorAll('.room-card');
-            const roomNames  = [];
+            const roomCards    = document.querySelectorAll('.room-card');
+            const roomNames    = [];
             const en1264Limits = [];
-            const bldType        = document.getElementById('sys_bld_type').value;
-            const apt_floor = document.getElementById('sys_apt_floor')
+            const bldType      = document.getElementById('sys_bld_type').value;
+            const apt_floor    = document.getElementById('sys_apt_floor')
                             ? document.getElementById('sys_apt_floor').value
                             : 'ara-kat';
-            const u_ceiling = (apt_floor === 'cati-kati')
-                            ? parseFloat(document.getElementById('sys_u_ceiling').value)
-                            : 0.0;
+            let u_ceiling = 0.0;
+            if (bldType === 'apartment') {
+                u_ceiling = (apt_floor === 'cati-kati') ? parseFloat(document.getElementById('sys_u_ceiling').value) : 0.0;
+            } else {
+                u_ceiling = parseFloat(document.getElementById('sys_u_ceiling').value);
+            }
 
             roomCards.forEach(card => {
                 roomNames.push(card.querySelector('.r-name').value);
