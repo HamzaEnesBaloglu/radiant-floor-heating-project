@@ -1,5 +1,5 @@
 function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water, u_ceiling_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.5)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.6)
 
     num_rooms          = length(t_room_arr);
     q_flux_arr         = zeros(1, num_rooms);
@@ -36,7 +36,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
     switch heat_source
         case 1  % Isi Pompasi
-            e_supply = max(0, (1 - T0_K / T_water_K) * (1 / cop));
+            e_supply = 1 / cop;
         case 2  % Doğalgaz Kazani (η_kazан ≈ 0.90)
             eta_boiler = 0.90;
             e_supply = max(0, (1 - T0_K / T_water_K) / eta_boiler);
@@ -48,7 +48,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
             eta_solar = 0.15; % Tipik panel verimi
             e_supply = max(0, eta_solar * (1 - T0_K / T_sun));
         otherwise
-            e_supply = max(0, (1 - T0_K / T_water_K) * (1 / cop));
+            e_supply = 1 / cop;
     end
 
     r_concrete = t_concrete / k_concrete;
@@ -63,14 +63,13 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     sys_t_mean = t_mean_water; 
 
     % BORU MALZEMESİ TABLOSU: [d_out(m), t_pipe(m), k_pipe(W/mK), epsilon(m)]
-    % 1=PEX-a, 2=PEX-AL-PEX, 3=PE-RT, 4=PE-Xa17, 5=PE-RT16
+    % 1=PEX-a, 2=PEX-AL-PEX, 3=PE-RT, 4=PE-Xa17
     pipe_table = [0.016, 0.002, 0.40,  0.000007;   % 1: PEX-a 16mm
                   0.016, 0.002, 0.45,  0.0000015;  % 2: PEX-AL-PEX 16mm
                   0.016, 0.002, 0.40,  0.000007;   % 3: PE-RT 16mm
-                  0.017, 0.002, 0.38,  0.000007;   % 4: PE-Xa 17mm
-                  0.016, 0.002, 0.38,  0.000007;]; % 5: PE-Xa 16mm
+                  0.017, 0.002, 0.38,  0.000007];   % 4: PE-Xa 17mm
 
-    pm = max(1, min(5, round(pipe_material)));
+    pm = max(1, min(4, round(pipe_material)));
     d_out_room   = pipe_table(pm, 1);
     t_pipe_room  = pipe_table(pm, 2);
     k_pipe       = pipe_table(pm, 3);
@@ -155,7 +154,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
         % Koschenz & Lehmann (2000) Eq. 2.13 — spiral asimetrik fin modeli
         L_fin = spacing / 2;
-        if lt == 2  % Spiral — gidiş/dönüş borulari yan yana, asimetrik sinir kosulu
+        if lt == 1  % Spiral — gidiş/dönüş borulari yan yana, asimetrik sinir kosulu
             mL  = m_param * L_fin;
             mL2 = m_param * (L_fin / 2);
             eta_symmetric  = tanh(mL) / mL;
@@ -254,7 +253,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
     % η_I = (1/COP) × dağıtım verimi (0.85 sabit)
     eta_dist  = 0.85;
-    sys_eta_I = (1 / cop) * eta_dist;
+    sys_eta_I = cop * eta_dist;
 
     % 6. ANA HAT VE POMPA HESABI
     t_pipe_main = 0.0034;

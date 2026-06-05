@@ -3,7 +3,7 @@ from flask_cors import CORS
 import matlab.engine
 import os
 
-#Versiyon v0.18.5
+#Versiyon v0.18.6
 
 app = Flask(__name__)
 CORS(app)
@@ -37,7 +37,7 @@ def validate_inputs(data):
     rng(data.get('cop'),            1.0,  7.0,  'COP')
     rng(data.get('hours'),          500,  8760, 'Yıllık çalışma saati')
     rng(data.get('co2_factor'),     0.05, 2.0,  'CO2 faktörü (kg/kWh)')
-    rng(data.get('pipe_material'),  1, 5,       'Boru malzemesi (1-5)')
+    rng(data.get('pipe_material'),  1, 4,       'Boru malzemesi (1-4)')
     rng(data.get('delta_T_water'),  2, 20,      'Su Sıcaklık Farkı (ΔT) (°C)')
 
     rooms = data.get('rooms', [])

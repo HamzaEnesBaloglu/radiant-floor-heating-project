@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.5)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.6)</p>
     </div>
 
     <div class="container">
@@ -154,7 +154,6 @@
                             <option value="2">PEX-AL-PEX 16mm</option>
                             <option value="3">PE-RT 16mm</option>
                             <option value="4">PE-Xa 17mm</option>
-                            <option value="5">PE-Xa 16mm</option>
                         </select>
                     </div>
                 </div>
@@ -353,7 +352,16 @@
             bindV('sys_rh',       v => rangeCk(v, 10, 100,  '%',  'Bağıl nem'));
             bindV('sys_r_ins',    v => rangeCk(v, 0.5, 5.0, '',   'Yalıtım R-değeri'));
             bindV('sys_dist_main',v => rangeCk(v,  1, 50,   'm',  'Ana hat mesafesi'));
-            bindV('eco_cop',      v => rangeCk(v, 1.0, 7.0, '',   'COP'));
+
+            bindV('eco_cop', v => {
+                const heatSource = document.getElementById('eco_heat_source').value;
+                if (heatSource === "1") {
+                    return rangeCk(v, 1.0, 7.0, '', 'COP');
+                } else {
+                    return rangeCk(v, 0.1, 1.0, '', 'Kazan Verimi (Örn: 0.90)');
+                }
+            });
+            
             bindV('eco_hours',    v => rangeCk(v, 500, 8760, 'sa', 'Çalışma saati'));
             bindV('eco_co2',      v => rangeCk(v, 0.05, 2.0, 'kg/kWh', 'CO2 faktörü'));
             bindV('sys_delta_T',  v => rangeCk(v, 2, 20, '°C', 'Delta_T_Su'));
@@ -475,9 +483,11 @@
                 }
 
                 // Çapraz: iç sıcaklık > kazan suyu (ısıtma imkansız)
-                const t_water = parseFloat(document.getElementById('sys_t_water').value);
-                if (q('.r-temp') >= t_water) {
-                    errors.push(`"${name}" — İç sıcaklık (${q('.r-temp')}°C), kazan suyu sıcaklığına (${t_water}°C) eşit veya büyük: ısıtma yapılamaz.`);
+                const t_water  = parseFloat(document.getElementById('sys_t_water').value);
+                const delta_t  = parseFloat(document.getElementById('sys_delta_T').value);
+                const t_return = t_water - delta_t;
+                if (q('.r-temp') >= t_return) {
+                    errors.push(`"${name}" — İç sıcaklık (${q('.r-temp')}°C), kazan dönüş suyu sıcaklığına (${t_return}°C) eşit veya büyük: ısıtma yapılamaz.`);
                 }
             });
 
@@ -888,10 +898,10 @@
                 { label: 'Oda Havası',        sub: '(T_i)', T: d.t_room  },
             ];
 
-            const NL    = layers.length;
-            const tVals = layers.map(l => l.T);
-            const tMin  = Math.floor(Math.min(...tVals)) - 1;
-            const tMax  = Math.ceil(Math.max(...tVals))  + 2;
+            const NL     = layers.length;
+            const tVals  = layers.map(l => l.T);
+            const tMin   = Math.floor(Math.min(...tVals)) - 1;
+            const tMax   = Math.ceil(Math.max(...tVals))  + 2;
             const tRange = tMax - tMin;
 
             const xOf = i => PAD.l + (i / (NL - 1)) * plotW;
@@ -1107,17 +1117,12 @@
                         en1264Tag    = `<span style="color:white; background:#d81b60; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">⚠️ EN 1264 İHLALİ (> ${limit}°C)</span>`;
                         t_surf_color = "#d81b60";
                     }
-                    let dewTag = "";
-                    if (t_surf <= t_dew) {
-                        dewTag       = `<span style="color:white; background:#0288d1; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">💧 ÇİĞLENME RİSKİ</span>`;
-                        t_surf_color = "#0288d1";
-                    }
-
+                    
                     let reValue = result.reynolds[i];
                     let reText, reColor;
-                    if      (reValue < 2300) { reText = `Laminer (Re:${reValue.toFixed(0)})`;    reColor = "#9e9e9e"; }
-                    else if (reValue < 4000) { reText = `Geçiş (Re:${reValue.toFixed(0)})`;      reColor = "var(--warning)"; }
-                    else                     { reText = `Türbülans (Re:${reValue.toFixed(0)})`; reColor = "var(--success)"; }
+                    if      (reValue < 2300) { reText = `Laminer   (Re:${reValue.toFixed(0)})`;  reColor = "#9e9e9e"; }
+                    else if (reValue < 4000) { reText = `Geçiş     (Re:${reValue.toFixed(0)})`;  reColor = "var(--warning)"; }
+                    else                     { reText = `Türbülans (Re:${reValue.toFixed(0)})`;  reColor = "var(--success)"; }
 
                     resContainer.innerHTML += `
                         <div class="result-room-card" style="grid-template-columns: 1fr 1fr 1fr 1fr; ${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
