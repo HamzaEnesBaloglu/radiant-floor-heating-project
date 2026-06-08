@@ -1,5 +1,5 @@
 function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr] = floor_heating_model(t_water, t_below_arr, r_insulation, dist_main, d_out_main, cop, hours, co2_factor, t_out, wind_factor, rh, altitude, glycol_percent, ventilation_arr, active_area_arr, t_room_arr, spacing_arr, r_cover_arr, area_arr, dist_arr, ext_wall_len_arr, room_height_arr, window_area_arr, u_wall_arr, u_window_arr, pipe_material, layout_type_arr, heat_source, delta_T_water, u_ceiling_arr)
-    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.6)
+    % MULTI-ZONE HYDRAULIC, ECO & ACADEMIC THERMODYNAMICS SOLVER (v0.18.7)
 
     num_rooms          = length(t_room_arr);
     q_flux_arr         = zeros(1, num_rooms);
@@ -37,8 +37,8 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     switch heat_source
         case 1  % Isi Pompasi
             e_supply = 1 / cop;
-        case 2  % Doğalgaz Kazani (η_kazан ≈ 0.90)
-            eta_boiler = 0.90;
+        case 2  % Doğalgaz Kazani (η_kazаn arayüzünden 'cop' değişkeni ile gelir)
+            eta_boiler = cop;
             e_supply = max(0, (1 - T0_K / T_water_K) / eta_boiler);
         case 3  % Elektrikli Direnç (COP=1 muadili)
             e_supply = max(0, 1 - T0_K / T_water_K);
@@ -154,7 +154,7 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
 
         % Koschenz & Lehmann (2000) Eq. 2.13 — spiral asimetrik fin modeli
         L_fin = spacing / 2;
-        if lt == 1  % Spiral — gidiş/dönüş borulari yan yana, asimetrik sinir kosulu
+        if lt == 1  % Serpantin (Meander), asimetrik sinir kosulu
             mL  = m_param * L_fin;
             mL2 = m_param * (L_fin / 2);
             eta_symmetric  = tanh(mL) / mL;
@@ -282,9 +282,17 @@ function [q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_d
     sys_total_energy = sum(room_energy_arr) + pump_energy_kwh;
     sys_total_co2 = sys_total_energy * co2_factor;
 
-    % CO2 AZALTMA YÜZDESİ (Referans Değer 1.25 kg/kWh)
-    reference_co2_factor = 1.25;
-    sys_co2_reduction = (1 - (co2_factor / reference_co2_factor)) * 100;
+    %CO2 AZALTMA YÜSDESİ (Referans: COP=0.9 Doğalgaz Sistemi, factor=0.22kg/kwh)
+    %Toplam ısı ihtiyacını doğalgaz ile karşılasaydık ne kadar CO2 salardık?
+    ref_energy_kwh = (sys_total_heat / 1000 * hours) / 0.90;
+    ref_total_co2 = ref_energy_kwh * 0.22;
+
+    if ref_total_co2 > 0
+        sys_co2_reduction = (1 - (sys_total_co2 / ref_total_co2)) * 100;
+    else
+        sys_co2_reduction = 0;
+    end
+
     if sys_co2_reduction < 0
         sys_co2_reduction = 0;
     end

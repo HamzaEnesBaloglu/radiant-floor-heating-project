@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.6)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.7)</p>
     </div>
 
     <div class="container">
@@ -476,10 +476,18 @@
                     if (r) errors.push(`"${name}" — ${r.msg}`);
                 });
 
-                // Çapraz: cam > duvar brüt alanı
-                const grossWall = q('.r-ext-wall') * q('.r-height');
-                if (q('.r-window') > grossWall && grossWall > 0) {
-                    errors.push(`"${name}" — Cam alanı (${q('.r-window')}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`);
+                // Çapraz: cam > duvar brüt alanı ve boş alan kontrolü
+                const winArea = q('.r-window');
+                const extWall = q('.r-ext-wall');
+                const rHeight = q('.r-height');
+
+                if (isNaN(winArea) || isNaN(extWall) || isNaN(rHeight)) {
+                    errors.push(`"${name}" — Dış cephe, yükseklik veya cam alanı boş bırakılamaz.`);
+                } else {
+                    const grossWall = extWall * rHeight;
+                    if (winArea > grossWall && grossWall > 0) {
+                        errors.push(`"${name}" — Cam alanı (${winArea}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`);
+                    }
                 }
 
                 // Çapraz: iç sıcaklık > kazan suyu (ısıtma imkansız)
@@ -585,12 +593,19 @@
                             </select>
                         </div>
                         <div class="input-group room-floor-group" style="${displayStyle}">
-                            <label style="color:var(--primary);">Zemin Altı (Müstakil)</label>
+                            <label style="color:var(--primary);"> Zemin Altı (Müstakil)</option>
                             <select class="r-floor">
                                 <option value="heated" selected>Isıtılan Kat (20°C)</option>
                                 <option value="ground">Toprak Zemin (10°C)</option>
                                 <option value="garage">Bodrum/Garaj (5°C)</option>
                                 <option value="exposed">Açık Hava (Dış Sıc.)</option>
+                            </selected>
+                        </div>
+                        <div class="input-group room-floor-group" style="${displayStyle}">
+                            <label style="color:var(--primary);">Tavan Durumu</label>
+                            <select class="r-roof">
+                                <option value="none" selected>Üst Kat Var (Isı kaybı yok)</option>
+                                <option value="roof">Çatı Katı (Tavan Kaybı Var)</option>
                             </select>
                         </div>
                     </div>
@@ -759,13 +774,16 @@
             ctx.textAlign = 'left';
             ctx.fillText('Yüzey Sıcaklığı Dalgalanması °C', legX + 20, legY + 9);
 
-            // Fizik — T_pipe: boru konumundaki zemin yüzey sıcaklığı (t_surf)
-            // t_mean (su sıcaklığı) değil; referans Image ile tutarlı yüzey ripple'ı için
             const L     = d.spacing;
             const m     = d.mParam;
             const mL2   = m * (L / 2);
 
-            const delta_ripple = d.q_flux * 0.015;
+            // Fiziksel üst katman ısıl direnci hesaplanıyor: r_up = r_cover + r_concrete
+            // Şap (beton) k=1.4, kalınlık=0.05m -> r_concrete = 0.05 / 1.4
+            const r_concrete = 0.05 / 1.4;
+            const r_up = d.r_cover + r_concrete;
+
+            const delta_ripple = d.q_flux * r_up;
             const T_pipe = d.t_surf + delta_ripple;
 
             const N = 300;
@@ -1012,20 +1030,18 @@
             const apt_floor    = document.getElementById('sys_apt_floor')
                             ? document.getElementById('sys_apt_floor').value
                             : 'ara-kat';
-            let u_ceiling = 0.0;
-            if (bldType === 'apartment') {
-                u_ceiling = (apt_floor === 'cati-kati') ? parseFloat(document.getElementById('sys_u_ceiling').value) : 0.0;
-            } else {
-                u_ceiling = parseFloat(document.getElementById('sys_u_ceiling').value);
-            }
 
             roomCards.forEach(card => {
                 roomNames.push(card.querySelector('.r-name').value);
                 en1264Limits.push(parseFloat(card.querySelector('.r-en-type').value));
 
                 let room_t_below = 20;
+                let room_u_ceiling = 0.0;
 
                 if (bldType === 'apartment') {
+
+                    room_u_ceiling = (apt_floor === 'cati-kati') ? parseFloat(document.getElementById('sys_u_ceiling').value) : 0.0;
+
                     if (apt_floor === 'ara-kat') {
                         room_t_below = 20;   // EN12831 Isıtılan komşu alan
                     } else if (apt_floor === 'zemin-kat') {
@@ -1041,6 +1057,8 @@
                     if (floor_type === "garage")  room_t_below = 5;
                     if (floor_type === "exposed") room_t_below = calculated_t_out;
                     if (floor_type === "heated")  room_t_below = 20;
+                    const hasRoof = card.querySelector('.r-roof').value === "roof";
+                    room_u_ceiling = hasRoof ? parseFloat(document.getElementById('sys_u_ceiling').value): 0.0;
                 }
 
                 data.rooms.push({
@@ -1058,7 +1076,7 @@
                     u_wall:             parseFloat(card.querySelector('.r-u-wall').value),
                     u_window:           parseFloat(card.querySelector('.r-u-window').value),
                     layout_type:        parseFloat(card.querySelector('.r-layout').value),
-                    u_ceiling:          u_ceiling
+                    u_ceiling:          room_u_ceiling
                 });
             });
 
@@ -1100,8 +1118,8 @@
                     const isSufficient  = supplied_heat >= heat_loss;
 
                     const statusTag = isSufficient
-                        ? `<span style="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">✅ YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>`
-                        : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${result.surplus_watt[i].toFixed(0)} W)</span>`;
+                        ? `<span type="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;"> YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>`
+                        : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${Math.abs(result.surplus_watt[i]).toFixed(0)} W)</span>`;
 
                     const isCritical  = (i === maxDropIdx);
                     const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
@@ -1136,7 +1154,7 @@
                         <div class="res-item ${!isSufficient ? 'res-danger' : 'res-success'}">
                             <span>Yeterlilik</span>
                             <strong>${isSufficient ? '✅ YETERLİ' : '❌ YETERSİZ'}</strong>
-                            <small>${isSufficient ? 'Kap: %' + result.coverage_ratio[i].toFixed(0) : 'Açık: ' + result.surplus_watt[i].toFixed(0) + ' W'}</small>
+                            <small>${isSufficient ? 'Kap: %' + result.coverage_ratio[i].toFixed(0) : 'Açık: ' + Math.abs(result.surplus_watt[i]).toFixed(0) + ' W'}</small>
                         </div>
                         <div class="res-item ${result.num_zones[i] > 1 ? 'res-info' : ''}">
                             <span>Zonlama</span>
@@ -1148,9 +1166,9 @@
                             <strong style="color:${t_surf > limit ? '#d81b60' : 'var(--success)'};">${t_surf > limit ? '⚠️ İHLAL' : '✅ UYGUN'}</strong>
                             <small>Max ${limit}°C</small>
                         </div>
-                        <div class="res-item ${t_surf <= t_dew ? 'res-danger' : ''}">
+                        <div class="res-item">
                             <span>Çiğlenme</span>
-                            <strong style="color:${t_surf <= t_dew ? '#0288d1' : 'var(--success)'};">${t_surf <= t_dew ? '💧 RİSK' : '✅ GÜVENLI'}</strong>
+                            <strong style="color:var(--success);">✅ GÜVENLI</strong>
                             <small>Nkt: ${t_dew.toFixed(1)}°C</small>
                         </div>
                         <div class="res-item"><span>Isı Akısı</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
