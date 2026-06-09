@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.7)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.8)</p>
     </div>
 
     <div class="container">
@@ -444,11 +444,18 @@
                 ['sys_rh',         10, 100,   '%',       'Bağıl nem'],
                 ['sys_r_ins',      0.5, 5.0,  '',        'Alt yalıtım R-değeri'],
                 ['sys_dist_main',  1, 50,     'm',       'Kazan→Kollektör mesafesi'],
-                ['eco_cop',        1.0, 7.0,  '',        'COP'],
                 ['eco_hours',      500, 8760, ' sa',     'Yıllık çalışma saati'],
                 ['eco_co2',        0.05, 2.0, ' kg/kWh', 'CO2 faktörü'],
                 ['sys_delta_T',    2, 20,     '°C',      'Delta-T Su (°C)'],
             ];
+
+            const heatSource = document.getElementById('eco_heat_source').value;
+            const copVal = parseFloat(document.getElementById('eco_cop').value);
+            const copResult = (heatSource === "1")
+                ? rangeCk(copVal, 1.0, 7.0, '', 'COP')
+                : rangeCk(copVal, 0.1, 1.0, '', 'Kazan/Sistem Verimi');
+            if (copResult) errors.push(`COP: ${copResult.msg}`);
+
             checks.forEach(([id, min, max, unit, label]) => {
                 const v = parseFloat(document.getElementById(id).value);
                 const r = rangeCk(v, min, max, unit, label);
@@ -593,13 +600,13 @@
                             </select>
                         </div>
                         <div class="input-group room-floor-group" style="${displayStyle}">
-                            <label style="color:var(--primary);"> Zemin Altı (Müstakil)</option>
+                            <label style="color:var(--primary);"> Zemin Altı (Müstakil)</label>
                             <select class="r-floor">
                                 <option value="heated" selected>Isıtılan Kat (20°C)</option>
                                 <option value="ground">Toprak Zemin (10°C)</option>
                                 <option value="garage">Bodrum/Garaj (5°C)</option>
                                 <option value="exposed">Açık Hava (Dış Sıc.)</option>
-                            </selected>
+                            </select>
                         </div>
                         <div class="input-group room-floor-group" style="${displayStyle}">
                             <label style="color:var(--primary);">Tavan Durumu</label>
@@ -1119,7 +1126,7 @@
 
                     const statusTag = isSufficient
                         ? `<span type="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;"> YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>`
-                        : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${Math.abs(result.surplus_watt[i]).toFixed(0)} W)</span>`;
+                        : `<span type"color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${Math.abs(result.surplus_watt[i]).toFixed(0)} W)</span>`;
 
                     const isCritical  = (i === maxDropIdx);
                     const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
@@ -1145,7 +1152,7 @@
                     resContainer.innerHTML += `
                         <div class="result-room-card" style="grid-template-columns: 1fr 1fr 1fr 1fr; ${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
                         <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
-                            <span>📍 ${roomNames[i]} ${criticalTag}</span>
+                            <span>📍 ${roomNames[i]} ${criticalTag}${multiZoneTag}${en1264Tag}</span>
                             <span style="font-size:11px; color:#666;">
                                 Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> |
                                 Sistem: <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
@@ -1168,8 +1175,10 @@
                         </div>
                         <div class="res-item">
                             <span>Çiğlenme</span>
-                            <strong style="color:var(--success);">✅ GÜVENLI</strong>
-                            <small>Nkt: ${t_dew.toFixed(1)}°C</small>
+                            <strong style="color:${t_surf <= t_dew ? 'var(--danger)' : 'var(--success)'};">
+                                ${t_surf <= t_dew ? 'YOĞUŞMA RİSKİ' : 'GÜVENLİ'}
+                            </strong>
+                            <small>Nkt: ${t_dew.toFixed(1)}°C${t_surf <= t_dew ? '- T_surf=' + t_surf.toFixed(1) + '°C' : ''} </small>
                         </div>
                         <div class="res-item"><span>Isı Akısı</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
                         <div class="res-item" style="background:#e1f5fe;"><span>Debimetre</span><strong style="color:var(--info);">${result.flow_lpm[i].toFixed(1)} L/min</strong></div>
