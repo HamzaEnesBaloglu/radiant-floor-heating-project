@@ -60,7 +60,7 @@
 
     <div class="header">
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.8)</p>
+        <p>Akademik Termodinamik & Isı Transferi (v0.18.9)</p>
     </div>
 
     <div class="container">
@@ -404,30 +404,42 @@
                 if (window > grossWall && grossWall > 0) {
                     winEl.classList.add('input-invalid');
                     if (errEl && errEl.classList.contains('field-error')) {
-                        errEl.textContent = `Cam alanı (${window}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`;
+                        errEl.textContent = `Cam Alanı (${window}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`;
                         errEl.classList.add('visible');
+                    }
+                } else {
+                    winEl.classList.remove('input-invalid');
+                    if (errEl && errEl.classList.contains('field-error')){
+                        errEl.classList.remove('visible');
                     }
                 }
             };
+
             q('.r-ext-wall').addEventListener('input', crossCheck);
             q('.r-height').addEventListener('input',   crossCheck);
             q('.r-window').addEventListener('input',   crossCheck);
 
             // Çapraz kontrol: aktif alan > brüt alan (mantıksal)
             const activeCheck = () => {
-                const area       = parseFloat(q('.r-area').value)        || 0;
+                const area = parseFloat(q('.r-area').value) || 0;
                 const activePerc = parseFloat(q('.r-active-area').value) || 0;
-                const activeEl   = q('.r-active-area');
-                const errEl      = activeEl.nextElementSibling;
-                // Aktif alan % zaten max=100 ama brüt alan ile oran absürd olabilir
+                const activeEl = q('.r-active-area');
+                const errEl = activeEl.nextElementSibling;
+                
                 if (activePerc > 100) {
                     activeEl.classList.add('input-invalid');
                     if (errEl && errEl.classList.contains('field-error')) {
                         errEl.textContent = 'Aktif alan %100\'ü geçemez.';
                         errEl.classList.add('visible');
                     }
+                } else {
+                    activeEl.classList.remove('input-invalid');
+                    if (errEl && errEl.classList.contains('field-error')) {
+                        errEl.classList.remove('visible');
+                    }
                 }
             };
+
             q('.r-active-area').addEventListener('input', activeCheck);
         }
 
@@ -1125,8 +1137,8 @@
                     const isSufficient  = supplied_heat >= heat_loss;
 
                     const statusTag = isSufficient
-                        ? `<span type="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;"> YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>`
-                        : `<span type"color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${Math.abs(result.surplus_watt[i]).toFixed(0)} W)</span>`;
+                        ? `<span style="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;"> YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>`
+                        : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${Math.abs(result.surplus_watt[i]).toFixed(0)} W)</span>`;
 
                     const isCritical  = (i === maxDropIdx);
                     const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
@@ -1152,7 +1164,7 @@
                     resContainer.innerHTML += `
                         <div class="result-room-card" style="grid-template-columns: 1fr 1fr 1fr 1fr; ${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
                         <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
-                            <span>📍 ${roomNames[i]} ${criticalTag}${multiZoneTag}${en1264Tag}</span>
+                            <span>📍 ${roomNames[i]} ${statusTag}${criticalTag}${multiZoneTag}${en1264Tag}</span>
                             <span style="font-size:11px; color:#666;">
                                 Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> |
                                 Sistem: <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
