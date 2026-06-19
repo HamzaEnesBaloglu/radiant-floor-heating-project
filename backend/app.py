@@ -3,21 +3,23 @@ from flask_cors import CORS
 import matlab.engine
 import os
 
-#Versiyon v0.18.9
+# Version v0.19.0
 
 app = Flask(__name__)
 CORS(app)
 
-print("MATLAB Motoru başlatılıyor... (Lütfen bekleyin)")
+print("Starting MATLAB Engine... (please wait)")
 try:
     eng = matlab.engine.start_matlab()
     engine_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'engine'))
     eng.cd(engine_path)
-    print(f"MATLAB hazır. Çalışma dizini: {engine_path}")
+    print(f"MATLAB ready. Working directory: {engine_path}")
 except Exception as e:
-    print(f"MATLAB Engine başlatılamadı: {e}")
+    print(f"Failed to start MATLAB Engine: {e}")
 
 # --- INPUT VALIDATION HELPER ---
+# NOTE: Backend validation messages are English-only on purpose. The frontend runs
+# the same checks first (with full TR/EN i18n), so these only surface on direct API calls.
 def validate_inputs(data):
     errors = []
 
@@ -25,54 +27,54 @@ def validate_inputs(data):
         try:
             v = float(val)
             if v < mn or v > mx:
-                errors.append(f"{label}: {v} değeri [{mn}, {mx}] aralığı dışında.")
+                errors.append(f"{label}: value {v} is outside the range [{mn}, {mx}].")
         except (TypeError, ValueError):
-            errors.append(f"{label}: geçerli bir sayı değil.")
+            errors.append(f"{label}: not a valid number.")
 
-    rng(data.get('t_water'),        25,   60,   'Kazan su sıcaklığı (°C)')
-    rng(data.get('r_insulation'),   0.5,  5.0,  'Alt yalıtım R-değeri')
-    rng(data.get('dist_main'),      1,    50,   'Kazan→Kollektör mesafesi (m)')
-    rng(data.get('altitude'),       0,    3000, 'Rakım (m)')
-    rng(data.get('rh'),             10,   100,  'Bağıl nem (%)')
-    rng(data.get('hours'),          500,  8760, 'Yıllık çalışma saati')
-    rng(data.get('co2_factor'),     0.05, 2.0,  'CO2 faktörü (kg/kWh)')
-    rng(data.get('pipe_material'),  1, 4,       'Boru malzemesi (1-4)')
-    rng(data.get('delta_T_water'),  2, 20,      'Su Sıcaklık Farkı (ΔT) (°C)')
+    rng(data.get('t_water'),        25,   60,   'Boiler water temperature (C)')
+    rng(data.get('r_insulation'),   0.5,  5.0,  'Sub-insulation R-value')
+    rng(data.get('dist_main'),      1,    50,   'Boiler->Manifold distance (m)')
+    rng(data.get('altitude'),       0,    3000, 'Altitude (m)')
+    rng(data.get('rh'),             10,   100,  'Relative humidity (%)')
+    rng(data.get('hours'),          500,  8760, 'Annual operating hours')
+    rng(data.get('co2_factor'),     0.05, 2.0,  'CO2 factor (kg/kWh)')
+    rng(data.get('pipe_material'),  1,    4,    'Pipe material (1-4)')
+    rng(data.get('delta_T_water'),  2,    20,   'Water temperature difference (dT) (C)')
 
     heat_source = int(float(data.get('heat_source', 1)))
     if heat_source == 1:
-        rng(data.get('cop'), 1.0, 7.0, 'COP (Isı Pompası)')
+        rng(data.get('cop'), 1.0, 7.0, 'COP (Heat Pump)')
     else:
-        rng(data.get('cop'), 0.1, 1.0, 'Kazan/Sistem Verimi')
+        rng(data.get('cop'), 0.1, 1.0, 'Boiler/System efficiency')
 
     rooms = data.get('rooms', [])
     for i, room in enumerate(rooms):
-        name = f"Oda {i+1}"
-        rng(room.get('room_area'),         2,    200,  f'{name} — Brüt alan (m²)')
-        rng(room.get('t_room'),            15,   30,   f'{name} — İç sıcaklık (°C)')
-        rng(room.get('spacing'),           0.05, 0.30, f'{name} — Boru aralığı (m)')
-        rng(room.get('dist_to_collector'), 1, 30,      f'{name} — Kollektöre mesafe (m)')
-        rng(room.get('active_area'),       10,   100,  f'{name} — Aktif alan (%)')
-        rng(room.get('ext_wall_len'),      0,    30,   f'{name} — Cephe uzunluğu (m)')
-        rng(room.get('room_height'),       2.2,  5.0,  f'{name} — Oda yüksekliği (m)')
-        rng(room.get('window_area'),       0,    50,   f'{name} — Cam alanı (m²)')
+        name = f"Room {i+1}"
+        rng(room.get('room_area'),         2,    200,  f'{name} - Gross area (m2)')
+        rng(room.get('t_room'),            15,   30,   f'{name} - Indoor temperature (C)')
+        rng(room.get('spacing'),           0.05, 0.30, f'{name} - Pipe spacing (m)')
+        rng(room.get('dist_to_collector'), 1, 30,      f'{name} - Distance to manifold (m)')
+        rng(room.get('active_area'),       10,   100,  f'{name} - Active area (%)')
+        rng(room.get('ext_wall_len'),      0,    30,   f'{name} - Facade length (m)')
+        rng(room.get('room_height'),       2.2,  5.0,  f'{name} - Room height (m)')
+        rng(room.get('window_area'),       0,    50,   f'{name} - Window area (m2)')
 
-        # Çapraz: cam alanı > duvar brüt alanı
+        # Cross-check: window area > gross wall area
         try:
             gross_wall = float(room.get('ext_wall_len', 0)) * float(room.get('room_height', 0))
             window = float(room.get('window_area', 0))
             if gross_wall > 0 and window > gross_wall:
-                errors.append(f"{name} — Cam alanı ({window}m²), duvar brüt alanından ({gross_wall:.1f}m²) büyük olamaz.")
+                errors.append(f"{name} - Window area ({window}m2) cannot exceed gross wall area ({gross_wall:.1f}m2).")
         except (TypeError, ValueError):
             pass
 
-        # Çapraz: iç sıcaklık >= kazan suyu
+        # Cross-check: indoor temperature >= boiler return water
         try:
             t_water = float(data.get('t_water', 999))
             delta_t = float(data.get('delta_T_water', 5))
             t_return = t_water - delta_t
             if float(room.get('t_room', 0)) >= t_return:
-                errors.append(f"{name} - Dönüş suyu sıcaklığı ({t_return}°C), iç sıcaklıktan düşük veya eşit olamaz (Isıtma imkansız).")
+                errors.append(f"{name} - Return water temperature ({t_return}C) cannot be lower than or equal to the indoor temperature (heating impossible).")
         except (TypeError, ValueError):
             pass
 
@@ -88,29 +90,29 @@ def calculate():
         return jsonify({"status": "error", "message": " | ".join(validation_errors)}), 400
 
 
-    t_water = float(data.get('t_water', 40.0))
-    r_insulation = float(data.get('r_insulation', 0.85))
-    dist_main = float(data.get('dist_main', 5.0))
-    d_out_main = float(data.get('d_out_main', 0.025))
+    t_water =       float(data.get('t_water', 40.0))
+    r_insulation =  float(data.get('r_insulation', 0.85))
+    dist_main =     float(data.get('dist_main', 5.0))
+    d_out_main =    float(data.get('d_out_main', 0.025))
     
-    base_temp = float(data.get('climate_zone', -5.0))
-    altitude = float(data.get('altitude', 0.0))
-    wind_factor = float(data.get('wind_factor', 1.0))
-    t_out_real = base_temp - (altitude * 0.0065)
+    base_temp =     float(data.get('climate_zone', -5.0))
+    altitude =      float(data.get('altitude', 0.0))
+    wind_factor =   float(data.get('wind_factor', 1.0))
+    t_out_real =    base_temp - (altitude * 0.0065)
     
-    rh = float(data.get('rh', 50.0))
-    glycol = float(data.get('glycol', 0.0))
+    rh =            float(data.get('rh', 50.0))
+    glycol =        float(data.get('glycol', 0.0))
     pipe_material = float(data.get('pipe_material', 1.0))
 
-    cop = float(data.get('cop', 3.5))
-    hours = float(data.get('hours', 2000.0))
-    co2_factor = float(data.get('co2_factor', 0.4))
-    heat_source = float(data.get('heat_source', 1.0))
+    cop =           float(data.get('cop', 3.5))
+    hours =         float(data.get('hours', 2000.0))
+    co2_factor =    float(data.get('co2_factor', 0.4))
+    heat_source =   float(data.get('heat_source', 1.0))
     delta_T_water = float(data.get('delta_T_water', 5.0))
 
     rooms = data.get('rooms', [])
     if not rooms:
-        return jsonify({"status": "error", "message": "En az bir oda eklemelisiniz."}), 400
+        return jsonify({"status": "error", "message": "You must add at least one room."}), 400
 
     t_room_list       = [float(r['t_room']) for r in rooms]
     spacing_list      = [float(r['spacing']) for r in rooms]
@@ -131,7 +133,7 @@ def calculate():
     u_ceiling_list    = [float(r.get('u_ceiling', 0.0)) for r in rooms]
 
     try:
-        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_bina_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr = eng.floor_heating_model(
+        q_flux_arr, t_surf_arr, q_down_arr, q_total_arr, len_per_zone_arr, p_drop_arr, room_energy_arr, room_co2_arr, q_loss_arr, num_zones_arr, flow_lpm_arr, fin_eff_arr, re_arr, coverage_ratio_arr, surplus_watt_arr, t_dew_arr, rad_ratio_arr, sys_total_heat, sys_max_pressure, main_p_drop, sys_pump_power, sys_total_energy, sys_total_co2, sys_t_mean, sys_co2_reduction, e_building_arr, psi_r_arr, sys_psi_r, sys_eta_I, e_supply, m_param_arr = eng.floor_heating_model(
             t_water, matlab.double(t_below_list), r_insulation, dist_main, d_out_main, cop, hours, co2_factor, 
             t_out_real, wind_factor, rh, altitude, glycol, matlab.double(ventilation_list), matlab.double(active_area_list), 
             matlab.double(t_room_list), matlab.double(spacing_list),
@@ -149,38 +151,38 @@ def calculate():
 
         return jsonify({
             "status": "success",
-            "calculated_t_out": t_out_real,
-            "q_flux": to_list(q_flux_arr),
-            "t_surf": to_list(t_surf_arr),
-            "q_down": to_list(q_down_arr),
-            "q_total": to_list(q_total_arr),
-            "len_per_zone": to_list(len_per_zone_arr), 
-            "p_drop": to_list(p_drop_arr),
-            "room_energy": to_list(room_energy_arr),
-            "room_co2": to_list(room_co2_arr),
-            "q_loss": to_list(q_loss_arr), 
-            "num_zones": to_list(num_zones_arr), 
-            "flow_lpm": to_list(flow_lpm_arr), 
-            "fin_eff": to_list(fin_eff_arr), 
-            "reynolds": to_list(re_arr),     
-            "coverage_ratio": to_list(coverage_ratio_arr), 
-            "surplus_watt": to_list(surplus_watt_arr),
-            "t_dew": to_list(t_dew_arr),         
-            "rad_ratio": to_list(rad_ratio_arr), 
-            "sys_total_heat": sys_total_heat,
-            "sys_max_pressure": sys_max_pressure,
-            "main_p_drop": main_p_drop,
-            "sys_pump_power": sys_pump_power,
-            "sys_total_energy": sys_total_energy,
-            "sys_total_co2": sys_total_co2,
-            "sys_t_mean": sys_t_mean,
+            "calculated_t_out":  t_out_real,
+            "q_flux":            to_list(q_flux_arr),
+            "t_surf":            to_list(t_surf_arr),
+            "q_down":            to_list(q_down_arr),
+            "q_total":           to_list(q_total_arr),
+            "len_per_zone":      to_list(len_per_zone_arr), 
+            "p_drop":            to_list(p_drop_arr),
+            "room_energy":       to_list(room_energy_arr),
+            "room_co2":          to_list(room_co2_arr),
+            "q_loss":            to_list(q_loss_arr), 
+            "num_zones":         to_list(num_zones_arr), 
+            "flow_lpm":          to_list(flow_lpm_arr), 
+            "fin_eff":           to_list(fin_eff_arr), 
+            "reynolds":          to_list(re_arr),     
+            "coverage_ratio":    to_list(coverage_ratio_arr), 
+            "surplus_watt":      to_list(surplus_watt_arr),
+            "t_dew":             to_list(t_dew_arr),         
+            "rad_ratio":         to_list(rad_ratio_arr), 
+            "sys_total_heat":    sys_total_heat,
+            "sys_max_pressure":  sys_max_pressure,
+            "main_p_drop":       main_p_drop,
+            "sys_pump_power":    sys_pump_power,
+            "sys_total_energy":  sys_total_energy,
+            "sys_total_co2":     sys_total_co2,
+            "sys_t_mean":        sys_t_mean,
             "sys_co2_reduction": sys_co2_reduction,
-            "e_bina": to_list(e_bina_arr),
-            "psi_r": to_list(psi_r_arr),
-            "sys_psi_r": sys_psi_r,
-            "sys_eta_I": sys_eta_I,
-            "e_supply": e_supply,
-            "m_param": to_list(m_param_arr)
+            "e_building":        to_list(e_building_arr),
+            "psi_r":             to_list(psi_r_arr),
+            "sys_psi_r":         sys_psi_r,
+            "sys_eta_I":         sys_eta_I,
+            "e_supply":          e_supply,
+            "m_param":           to_list(m_param_arr)
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

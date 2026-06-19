@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,34 +7,29 @@
     <style>
         :root { --bg: #f4f7f9; --panel: #ffffff; --primary: #0056b3; --text: #333; --border: #e1e4e8; --success: #2e7d32; --eco: #4caf50; --danger: #d32f2f; --warning: #ff9800; --info: #0288d1; --academic: #8e24aa;}
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .header { text-align: center; margin-bottom: 30px; }
+        .header { text-align: center; margin-bottom: 30px; position: relative; }
         .header h1 { color: var(--primary); margin: 0; font-weight: 600; font-size: 28px; }
         .container { display: flex; gap: 20px; max-width: 1400px; margin: auto; align-items: flex-start;}
         .panel { background: var(--panel); padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
         .inputs { flex: 1; min-width: 560px; }
         .results { flex: 2; display: flex; flex-direction: column; gap: 20px; }
         h3 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 10px; color: #2c3e50; font-size: 16px; display: flex; justify-content: space-between;}
-        
         .global-settings { background: #eef2f5; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
         .eco-settings { background: #e8f5e9; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--eco);}
         .room-card { border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 15px; margin-bottom: 15px; border-radius: 4px; background: #fafbfc; position: relative;}
         .loss-panel { background: #e3f2fd; padding: 10px; border-radius: 4px; margin-top: 10px; border: 1px dashed #90caf9;}
         .remove-btn { position: absolute; right: 10px; top: 10px; background: var(--danger); color: white; border: none; border-radius: 3px; cursor: pointer; padding: 3px 8px; font-size: 11px;}
-        
         .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .input-group { flex: 1; }
         label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 5px; color: #555; }
         input, select { width: 100%; padding: 7px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 12px;}
-        
         button.primary-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.3s; margin-top: 10px; font-size: 15px;}
         button.add-btn { background: white; color: var(--primary); border: 2px dashed var(--primary); width: 100%; padding: 10px; cursor: pointer; border-radius: 4px; font-weight: bold; margin-bottom: 15px;}
-        
         .summary-dashboard { display: flex; gap: 10px; background: #1e1e1e; color: white; padding: 15px; border-radius: 8px; flex-wrap: wrap;}
         .dash-box { flex: 1; min-width: 90px; text-align: center; }
         .dash-title { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;}
         .dash-val { font-size: 20px; font-weight: bold; color: #4fc3f7; margin-top: 5px;}
         .dash-val.eco { color: #81c784; }
-        
         .result-room-card { border: 1px solid var(--border); padding: 15px; border-radius: 6px; background: #fff; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;}
         .res-item { background: #f4f7f9; padding: 8px; border-radius: 4px; text-align: center;}
         .res-item.eco-item { background: #e8f5e9; }
@@ -44,8 +39,6 @@
         .res-item.res-success { background: #e8f5e9; }
         .res-item.res-danger  { background: #ffebee; }
         .res-item.res-info    { background: #e1f5fe; }
-
-        /* --- HATA & UYARI SİSTEMİ --- */
         .field-error { color: #d32f2f; font-size: 10px; font-weight: 600; margin-top: 3px; display: none; }
         .field-error.visible { display: block; }
         input.input-invalid { border-color: #d32f2f !important; background: #fff8f8; }
@@ -54,101 +47,102 @@
         #global-error-banner.visible { display: block; }
         #global-error-banner ul { margin: 5px 0 0 0; padding-left: 18px; font-size: 12px; color: #b71c1c; }
         #global-error-banner .banner-title { font-weight: bold; color: #c62828; font-size: 13px; }
+        .lang-toggle { position: absolute; top: 0; right: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; font-weight: 600; color: #999; box-shadow: 0 1px 4px rgba(0,0,0,0.06);}
+        .lang-toggle .active { color: var(--primary); }
     </style>
 </head>
 <body>
-
     <div class="header">
+        <button id="lang-toggle" class="lang-toggle" onclick="toggleLang()">
+            🌐 <span id="lang-opt-en">EN</span> | <span id="lang-opt-tr">TR</span>
+        </button>
         <h1>Radiant Floor Solver</h1>
-        <p>Akademik Termodinamik & Isı Transferi (v0.18.9)</p>
+        <p data-i18n="app_subtitle">Academic Thermodynamics &amp; Heat Transfer (v0.19.0)</p>
     </div>
-
     <div class="container">
         <div class="panel inputs">
-            <h3>🌍 İklim ve Nem Ayarları</h3>
+            <h3 data-i18n="sec_climate">🌍 Climate &amp; Humidity Settings</h3>
             <div class="global-settings">
                 <div class="input-row">
                     <div class="input-group">
-                        <label>İklim Bölgesi</label>
+                        <label data-i18n="lbl_climate_zone">Climate Zone</label>
                         <select id="sys_climate">
-                            <option value="3.0">Bölge 1: Sıcak (Örn: Antalya)</option>
-                            <option value="-3.0">Bölge 2: Ilıman (Örn: İstanbul)</option>
-                            <option value="-9.0" selected>Bölge 3: Soğuk (Örn: Ankara)</option>
-                            <option value="-15.0">Bölge 4: Sert (Örn: Erzurum)</option>
+                            <option value="3.0"   data-i18n="opt_zone1">Zone 1: Hot (e.g. Antalya)</option>
+                            <option value="-3.0"  data-i18n="opt_zone2">Zone 2: Temperate (e.g. Istanbul)</option>
+                            <option value="-9.0" selected data-i18n="opt_zone3">Zone 3: Cold (e.g. Ankara)</option>
+                            <option value="-15.0" data-i18n="opt_zone4">Zone 4: Severe (e.g. Erzurum)</option>
                         </select>
                     </div>
-                    <div class="input-group"><label>Rakım (m)</label><input type="number" id="sys_altitude" value="900" step="50"></div>
-                    <div class="input-group"><label>Bağıl Nem (%)</label><input type="number" id="sys_rh" value="50" step="5"></div>
+                    <div class="input-group"><label data-i18n="lbl_altitude">Altitude (m)</label><input type="number" id="sys_altitude" value="900" step="50"></div>
+                    <div class="input-group"><label data-i18n="lbl_rh">Relative Humidity (%)</label><input type="number" id="sys_rh" value="50" step="5"></div>
                     <div class="input-group">
-                        <label>Rüzgar Maruziyeti</label>
+                        <label data-i18n="lbl_wind">Wind Exposure</label>
                         <select id="sys_wind">
-                            <option value="0.9">Korunaklı (Şehir İçi)</option>
-                            <option value="1.0" selected>Normal (Banliyö)</option>
-                            <option value="1.15">Açık Arazi (+15% Kayıp)</option>
+                            <option value="0.9"  data-i18n="opt_wind_sheltered">Sheltered (Urban)</option>
+                            <option value="1.0" selected data-i18n="opt_wind_normal">Normal (Suburban)</option>
+                            <option value="1.15" data-i18n="opt_wind_open">Open Terrain (+15% Loss)</option>
                         </select>
                     </div>
                 </div>
             </div>
-
-            <h3>🏠 Bina ve Mimari Ayarlar</h3>
+            <h3 data-i18n="sec_building">🏠 Building &amp; Architecture Settings</h3>
             <div class="global-settings" style="background:#fff3e0; border: 1px solid #ffe0b2;">
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Bina Tipi Seçimi</label>
+                        <label data-i18n="lbl_bld_type">Building Type</label>
                         <select id="sys_bld_type" onchange="toggleBuildingType()" style="font-weight: bold; color: #e65100;">
-                            <option value="apartment" selected>🏢 Apartman (Tüm odaların altı aynı)</option>
-                            <option value="detached">🏡 Müstakil / Dubleks (Her oda farklı olabilir)</option>
+                            <option value="apartment" selected data-i18n="opt_bld_apartment">🏢 Apartment (Same floor below for all rooms)</option>
+                            <option value="detached" data-i18n="opt_bld_detached">🏡 Detached / Duplex (Each room can differ)</option>
                         </select>
                     </div>
                     <div class="input-group" id="global_t_below_group">
-                        <label>Daire Konumu</label>
+                        <label data-i18n="lbl_flat_position">Flat Position</label>
                         <select id = "sys_apt_floor" onchange="updateAptFloorInfo()">
-                            <option value ="ara-kat" selected> Ara Kat </option>
-                            <option value = "zemin-kat"> Zemin Kat </option>
-                            <option value ="cati-kati"> Çatı Katı </option>
+                            <option value ="ara-kat" selected data-i18n="opt_floor_middle"> Middle Floor </option>
+                            <option value = "zemin-kat" data-i18n="opt_floor_ground"> Ground Floor </option>
+                            <option value ="cati-kati" data-i18n="opt_floor_top"> Top Floor </option>
                         </select>
                         <div id ="zemin_kat_type_group" style="display:none; margin-top:6px;">
-                            <label>Zemin Alti Tipi</label>
+                            <label data-i18n="lbl_subfloor_type">Sub-floor Type</label>
                             <select id="sys_zemin_type" onchange="updateAptFloorInfo()">
-                                <option value="ground"> Toprak Temaslı (10°C)</option>
-                                <option value="garage"> Hava Temaslı/Otopark (5°C)</option>
+                                <option value="ground" data-i18n="opt_sub_ground"> Ground Contact (10°C)</option>
+                                <option value="garage" data-i18n="opt_sub_garage"> Air Contact/Garage (5°C)</option>
                             </select>
                         </div>
                         <div id="cati_kat_type_group" style="display:none; margin-top:6px;">
-                            <label>Çatı/Tavan Yalıtımı</label>
+                            <label data-i18n="lbl_roof_ins">Roof/Ceiling Insulation</label>
                             <select id="sys_u_ceiling">
-                                <option value="2.5">Yalıtımsız Düz Çatı (U~2.50)</option>
-                                <option value="0.8">Minimum Yalıtım (U~0.80)</option>
-                                <option value="0.4" selected>TS 825 Uyumlu (U~0.40)</option>
-                                <option value="0.2">İyi Yalıtımlı (U~0.20)</option>
+                                <option value="2.5" data-i18n="opt_roof_none">Uninsulated Flat Roof (U~2.50)</option>
+                                <option value="0.8" data-i18n="opt_roof_min">Minimum Insulation (U~0.80)</option>
+                                <option value="0.4" selected data-i18n="opt_roof_ts825">TS 825 Compliant (U~0.40)</option>
+                                <option value="0.2" data-i18n="opt_roof_good">Well Insulated (U~0.20)</option>
                             </select>
                         </div>
                         <div id="apt_floor_info" style="font-size:10px; color:#2e7d32; font-weight:600; margin-top:4px;">
-                            Alt: Komşu daire 20°C (EN 12831)
+                            Below: Neighbouring flat 20°C (EN 12831)
                         </div>
-                    </div> 
+                    </div>
                 </div>
             </div>
-
-            <h3>Kazan, Ana Hat & Glikol Ayarları</h3>
+            <h3 data-i18n="sec_boiler">Boiler, Main Line &amp; Glycol Settings</h3>
             <div class="global-settings">
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Kazan Su Sıc. (°C)</label>
+                        <label data-i18n="lbl_boiler_temp">Boiler Water Temp. (°C)</label>
                         <input type="number" id="sys_t_water" value="40" step="1">
                         <div class="field-error"></div>
                     </div>
                     <div class="input-group">
-                        <label style="color:var(--academic);">Antifriz / Glikol Oranı</label>
+                        <label style="color:var(--academic);" data-i18n="lbl_glycol">Antifreeze / Glycol Ratio</label>
                         <select id="sys_glycol" style="border-color:var(--academic);">
-                            <option value="0" selected>%0 (Saf Su)</option>
-                            <option value="10">%10 Glikol</option>
-                            <option value="20">%20 Glikol</option>
-                            <option value="30">%30 Glikol</option>
+                            <option value="0" selected data-i18n="opt_glycol_0">0% (Pure Water)</option>
+                            <option value="10" data-i18n="opt_glycol_10">10% Glycol</option>
+                            <option value="20" data-i18n="opt_glycol_20">20% Glycol</option>
+                            <option value="30" data-i18n="opt_glycol_30">30% Glycol</option>
                         </select>
                     </div>
                     <div class="input-group">
-                        <label style="color:var(--academic);">Oda Borusu Malzemesi</label>
+                        <label style="color:var(--academic);" data-i18n="lbl_pipe_material">Room Pipe Material</label>
                         <select id="sys_pipe_material" style="border-color:var(--academic);">
                             <option value="1" selected>PEX-a 16mm</option>
                             <option value="2">PEX-AL-PEX 16mm</option>
@@ -159,120 +153,567 @@
                 </div>
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Alt Yalıtım (R)</label>
+                        <label data-i18n="lbl_sub_ins">Sub-insulation (R)</label>
                         <input type="number" id="sys_r_ins" value="0.85" step="0.05">
                         <div class="field-error"></div>
                     </div>
                     <div class="input-group">
-                        <label>Kazan→Kollektör (m)</label>
+                        <label data-i18n="lbl_boiler_manifold">Boiler→Manifold (m)</label>
                         <input type="number" id="sys_dist_main" value="10" step="1">
                         <div class="field-error"></div>
                     </div>
                     <div class="input-group">
-                        <label>Ana Boru Çapı</label>
+                        <label data-i18n="lbl_main_diameter">Main Pipe Diameter</label>
                         <select id="sys_d_out_main">
                             <option value="0.025">25 mm</option>
                             <option value="0.032" selected>32 mm</option>
                         </select>
                     </div>
                     <div class="input-group">
-                        <label>Delta-T Su (°C)</label>
+                        <label data-i18n="lbl_delta_t">Delta-T Water (°C)</label>
                         <input type="number" id="sys_delta_T" value="5" step="1" min="2" max="20">
                         <div class="field-error"></div>
                     </div>
                 </div>
             </div>
-
-            <h3>Çevresel Verimlilik (Eco-Settings)</h3>
+            <h3 data-i18n="sec_eco">Environmental Efficiency (Eco-Settings)</h3>
             <div class="eco-settings">
                 <div class="input-row">
-                    <div class="input-group"><label>Sistem Verimi (COP)</label><input type="number" id="eco_cop" value="3.5" step="0.1"><div class="field-error"></div></div>
-                    <div class="input-group"><label>Yıllık Çalışma (Saat)</label><input type="number" id="eco_hours" value="2000" step="100"><div class="field-error"></div></div>
+                    <div class="input-group"><label data-i18n="lbl_cop">System Efficiency (COP)</label><input type="number" id="eco_cop" value="3.5" step="0.1"><div class="field-error"></div></div>
+                    <div class="input-group"><label data-i18n="lbl_hours">Annual Operation (Hours)</label><input type="number" id="eco_hours" value="2000" step="100"><div class="field-error"></div></div>
                 </div>
                 <div class="input-row">
-                    <div class="input-group"><label>Emisyon (kg CO2/kWh)</label><input type="number" id="eco_co2" value="0.4" step="0.05"><div class="field-error"></div></div>
+                    <div class="input-group"><label data-i18n="lbl_co2">Emission (kg CO2/kWh)</label><input type="number" id="eco_co2" value="0.4" step="0.05"><div class="field-error"></div></div>
                     <div class="input-group">
-                        <label style="color:var(--academic);">Isı Kaynağı (Ekserji)</label>
+                        <label style="color:var(--academic);" data-i18n="lbl_heat_source">Heat Source (Exergy)</label>
                         <select id="eco_heat_source" style="border-color:var(--academic);">
-                            <option value="1" selected>♨️ Isı Pompası</option>
-                            <option value="2">🔥 Doğalgaz Kazanı</option>
-                            <option value="3">⚡ Elektrikli Direnç</option>
-                            <option value="4">☀️ Güneş Enerjili</option>
+                            <option value="1" selected data-i18n="opt_src_hp">♨️ Heat Pump</option>
+                            <option value="2" data-i18n="opt_src_gas">🔥 Natural Gas Boiler</option>
+                            <option value="3" data-i18n="opt_src_elec">⚡ Electric Resistance</option>
+                            <option value="4" data-i18n="opt_src_solar">☀️ Solar</option>
                         </select>
                     </div>
                 </div>
             </div>
-
-            <h3>Odalar (Akademik Termodinamik)</h3>
+            <h3 data-i18n="sec_rooms">Rooms (Academic Thermodynamics)</h3>
             <div id="room-container"></div>
-            
-            <button class="add-btn" onclick="addRoom()">+ Yeni Oda Ekle</button>
+            <button class="add-btn" onclick="addRoom()" data-i18n="btn_add_room">+ Add New Room</button>
             <div id="global-error-banner">
-                <div class="banner-title">⛔ Hesaplama başlatılamıyor — lütfen hataları düzeltin:</div>
+                <div class="banner-title" data-i18n="banner_title">⛔ Cannot start calculation — please fix the errors:</div>
                 <ul id="global-error-list"></ul>
             </div>
-            <button class="primary-btn" onclick="runSimulation()">Tüm Sistemi Analiz Et</button>
+            <button class="primary-btn" onclick="runSimulation()" data-i18n="btn_analyze">Analyze Entire System</button>
         </div>
-
         <div class="panel results">
-            <h3>Tüm Ev Özeti <span style="font-size: 12px; color:var(--info);">🛠️ Şantiye Dashboard</span></h3>
+            <h3><span data-i18n="sec_summary">Whole House Summary</span> <span style="font-size: 12px; color:var(--info);" data-i18n="sec_summary_badge">🛠️ Site Dashboard</span></h3>
             <div class="summary-dashboard" style="flex-direction: column; gap: 8px;">
                 <div style="display:flex; gap:10px; width:100%;">
                     <div class="dash-box">
-                        <div class="dash-title">Dış Sıc.</div>
+                        <div class="dash-title" data-i18n="dash_t_out">Outdoor Temp</div>
                         <div class="dash-val" id="res_t_out" style="color:#fff;">-- °C</div>
                     </div>
                     <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
-                        <div class="dash-title">T_mean</div>
+                        <div class="dash-title" data-i18n="dash_t_mean">T_mean</div>
                         <div class="dash-val" id="res_t_mean" style="color:#ffb74d;">-- °C</div>
                     </div>
                     <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
-                        <div class="dash-title">Kollektör</div>
-                        <div class="dash-val" id="res_manifold" style="color:#64b5f6;">-- Ağız</div>
+                        <div class="dash-title" data-i18n="dash_manifold">Manifold</div>
+                        <div class="dash-val" id="res_manifold" style="color:#64b5f6;">--</div>
                     </div>
                     <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
-                        <div class="dash-title">Pompa</div>
+                        <div class="dash-title" data-i18n="dash_pump">Pump</div>
                         <div class="dash-val" id="res_pump_w" style="color:#ff9800;">-- W</div>
                     </div>
                     <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
-                        <div class="dash-title">Tüketim</div>
+                        <div class="dash-title" data-i18n="dash_consumption">Consumption</div>
                         <div class="dash-val eco" id="res_sys_energy">-- kWh</div>
                     </div>
                 </div>
                 <div style="display:flex; gap:10px; width:100%; border-top:1px solid #333; padding-top:8px;">
                     <div class="dash-box">
-                        <div class="dash-title">Karbon İzi</div>
+                        <div class="dash-title" data-i18n="dash_carbon">Carbon Footprint</div>
                         <div class="dash-val" id="res_sys_co2" style="color:#f44336;">-- kg</div>
                     </div>
                     <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
-                        <div class="dash-title" style="color:var(--academic);">CO2 Azaltma</div>
+                        <div class="dash-title" style="color:var(--academic);" data-i18n="dash_co2_red">CO2 Reduction</div>
                         <div class="dash-val" id="res_co2_red" style="color:var(--academic);">-- %</div>
                     </div>
                     <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
-                        <div class="dash-title" style="color:var(--academic);">η_I</div>
+                        <div class="dash-title" style="color:var(--academic);" data-i18n="dash_eta_i">η_I</div>
                         <div class="dash-val" id="res_eta_I" style="color:#ce93d8;">--</div>
                     </div>
                     <div class="dash-box" style="border-left:1px solid #444; padding-left:10px;">
-                        <div class="dash-title" style="color:var(--academic);">ψ_R (Sistem)</div>
+                        <div class="dash-title" style="color:var(--academic);" data-i18n="dash_psi_r">ψ_R (System)</div>
                         <div class="dash-val" id="res_psi_r" style="color:#ce93d8;">--</div>
                     </div>
                 </div>
             </div>
-
-            <h3>Oda Oda (Lokal) Tesisat ve Teşhis Raporu</h3>
+            <h3 data-i18n="sec_room_report">Room-by-Room (Local) Installation &amp; Diagnostics Report</h3>
             <div id="results-container">
-                <p style="color: #666; font-size: 14px;">Şantiye verileri bekleniyor...</p>
+                <p style="color: #666; font-size: 14px;" data-i18n="waiting_data">Waiting for site data...</p>
             </div>
         </div>
     </div>
-
     <script>
         let roomCount = 0;
+        let lastResult = null, lastData = null, lastRoomNames = null, lastEn1264Limits = null;
+
+        // ============================================================
+        // I18N — TRANSLATION DICTIONARY
+        // ============================================================
+        const I18N = {
+            en: {
+                app_subtitle: "Academic Thermodynamics & Heat Transfer (v0.19.0)",
+                sec_climate:  "🌍 Climate & Humidity Settings",
+                sec_building: "🏠 Building & Architecture Settings",
+                sec_boiler:   "Boiler, Main Line & Glycol Settings",
+                sec_eco:      "Environmental Efficiency (Eco-Settings)",
+                sec_rooms:    "Rooms (Academic Thermodynamics)",
+                sec_summary:       "Whole House Summary",
+                sec_summary_badge: "🛠️ Site Dashboard",
+                sec_room_report:   "Room-by-Room (Local) Installation & Diagnostics Report",
+                lbl_climate_zone: "Climate Zone",
+                opt_zone1: "Zone 1: Hot (e.g. Antalya)",
+                opt_zone2: "Zone 2: Temperate (e.g. Istanbul)",
+                opt_zone3: "Zone 3: Cold (e.g. Ankara)",
+                opt_zone4: "Zone 4: Severe (e.g. Erzurum)",
+                lbl_altitude: "Altitude (m)",
+                lbl_rh: "Relative Humidity (%)",
+                lbl_wind: "Wind Exposure",
+                opt_wind_sheltered: "Sheltered (Urban)",
+                opt_wind_normal: "Normal (Suburban)",
+                opt_wind_open: "Open Terrain (+15% Loss)",
+                lbl_bld_type: "Building Type",
+                opt_bld_apartment: "🏢 Apartment (Same floor below for all rooms)",
+                opt_bld_detached: "🏡 Detached / Duplex (Each room can differ)",
+                lbl_flat_position: "Flat Position",
+                opt_floor_middle: "Middle Floor",
+                opt_floor_ground: "Ground Floor",
+                opt_floor_top: "Top Floor",
+                lbl_subfloor_type: "Sub-floor Type",
+                opt_sub_ground: "Ground Contact (10°C)",
+                opt_sub_garage: "Air Contact/Garage (5°C)",
+                lbl_roof_ins: "Roof/Ceiling Insulation",
+                opt_roof_none: "Uninsulated Flat Roof (U~2.50)",
+                opt_roof_min: "Minimum Insulation (U~0.80)",
+                opt_roof_ts825: "TS 825 Compliant (U~0.40)",
+                opt_roof_good: "Well Insulated (U~0.20)",
+                info_below_flat: "Below: heated flat 20°C (EN 12831)",
+                info_ground_soil: "Ground-contact slab 10°C (EN 12831)",
+                info_air_garage: "Air contact/Garage: 5°C (EN 12831)",
+                info_ceiling_loss: "Ceiling loss included in the model",
+                lbl_boiler_temp: "Boiler Water Temp. (°C)",
+                lbl_glycol: "Antifreeze / Glycol Ratio",
+                opt_glycol_0: "0% (Pure Water)",
+                opt_glycol_10: "10% Glycol",
+                opt_glycol_20: "20% Glycol",
+                opt_glycol_30: "30% Glycol",
+                lbl_pipe_material: "Room Pipe Material",
+                lbl_sub_ins: "Sub-insulation (R)",
+                lbl_boiler_manifold: "Boiler→Manifold (m)",
+                lbl_main_diameter: "Main Pipe Diameter",
+                lbl_delta_t: "Delta-T Water (°C)",
+                lbl_cop: "System Efficiency (COP)",
+                lbl_hours: "Annual Operation (Hours)",
+                lbl_co2: "Emission (kg CO2/kWh)",
+                lbl_heat_source: "Heat Source (Exergy)",
+                opt_src_hp: "♨️ Heat Pump",
+                opt_src_gas: "🔥 Natural Gas Boiler",
+                opt_src_elec: "⚡ Electric Resistance",
+                opt_src_solar: "☀️ Solar",
+                btn_add_room: "+ Add New Room",
+                banner_title: "⛔ Cannot start calculation — please fix the errors:",
+                btn_analyze: "Analyze Entire System",
+                dash_t_out: "Outdoor Temp",
+                dash_t_mean: "T_mean",
+                dash_manifold: "Manifold",
+                dash_pump: "Pump",
+                dash_consumption: "Consumption",
+                dash_carbon: "Carbon Footprint",
+                dash_co2_red: "CO2 Reduction",
+                dash_eta_i: "η_I",
+                dash_psi_r: "ψ_R (System)",
+                unit_ports: "Ports",
+                waiting_data: "Waiting for site data...",
+                default_living: "Living Room",
+                default_bath: "Bathroom",
+                room: "Room",
+                btn_remove: "X DEL",
+                lbl_room_name: "Room Name",
+                lbl_gross_area: "Gross Area (m²)",
+                lbl_indoor_temp: "Indoor Temp. (°C)",
+                lbl_en_type: "EN 1264 Type",
+                opt_en_living: "Living/Residential (Max 29°C)",
+                opt_en_wet: "Bathroom/Wet (Max 33°C)",
+                opt_en_edge: "Perimeter/Edge (Max 35°C)",
+                adv_title: "🔬 Advanced Thermodynamic Settings (F2, F3)",
+                lbl_active_area: "Active Area % (F2) ℹ️",
+                ttl_active_area: "Fixed furniture vs deducted active piping area",
+                lbl_ventilation: "Hybrid Panel (F3) ℹ️",
+                ttl_ventilation: "Mechanical ventilation increases convection",
+                opt_vent_natural: "Natural (None)",
+                opt_vent_forced: "Forced Ventilation (Yes)",
+                lbl_layout: "Floor Pattern ℹ️",
+                ttl_layout: "Floor geometry affects pipe length and heat uniformity",
+                opt_layout_meander: "🐍 Meander (Serpentine)",
+                opt_layout_spiral: "🌀 Spiral (Snail)",
+                opt_layout_double: "↔️ Double Meander",
+                lbl_to_manifold: "To Manifold (m)",
+                lbl_spacing: "Pipe Spacing (m)",
+                lbl_cover: "Floor Covering",
+                opt_cover_ceramic: "Ceramic",
+                opt_cover_parquet: "Parquet",
+                opt_cover_carpet: "Carpet",
+                lbl_subfloor_detached: "Sub-floor (Detached)",
+                opt_floor_heated: "Heated Floor (20°C)",
+                opt_floor_soil: "Ground Soil (10°C)",
+                opt_floor_basement: "Basement/Garage (5°C)",
+                opt_floor_exposed: "Open Air (Outdoor Temp.)",
+                lbl_ceiling_cond: "Ceiling Condition",
+                opt_roof_upper: "Upper Floor Exists (No heat loss)",
+                opt_roof_top: "Top Floor (Ceiling Loss)",
+                facade_title: "🔍 Façade (Heat Loss) Parameters",
+                lbl_facade_len: "Façade Length (m)",
+                lbl_height: "Height (m)",
+                lbl_window_area: "Window Area (m²)",
+                lbl_wall_ins: "Wall Insulation",
+                opt_wall_old: "Old/Uninsulated (U~1.5)",
+                opt_wall_std: "Standard (U~0.6)",
+                opt_wall_good: "Well Insulated (U~0.3)",
+                lbl_window_type: "Window Type",
+                opt_win_single: "Single Glazing (U~5.0)",
+                opt_win_double: "Standard Double Glazing (U~2.8)",
+                opt_win_lowe: "Low-E/Synergy (U~1.3)",
+                tag_sufficient: "SUFFICIENT (Capacity: {cap}%)",
+                tag_insufficient: "❌ INSUFFICIENT (Deficit: {deficit} W)",
+                tag_critical: "CRITICAL CIRCUIT",
+                tag_multizone: "MULTI-ZONE ({n} Loops)",
+                tag_en_violation: "⚠️ EN 1264 VIOLATION (> {limit}°C)",
+                regime_laminar: "Laminar (Re:{re})",
+                regime_transitional: "Transitional (Re:{re})",
+                regime_turbulent: "Turbulent (Re:{re})",
+                hdr_loss: "Loss:",
+                hdr_system: "System:",
+                ri_sufficiency: "Sufficiency",
+                ri_sufficient_short: "✅ SUFFICIENT",
+                ri_insufficient_short: "❌ INSUFFICIENT",
+                ri_cap: "Cap: {cap}%",
+                ri_deficit: "Deficit: {deficit} W",
+                ri_zoning: "Zoning",
+                ri_loops: "{n} Loops",
+                ri_single_loop: "Single Loop",
+                ri_per_loop: "{len}m/loop",
+                ri_en1264: "EN 1264",
+                ri_violation: "⚠️ VIOLATION",
+                ri_ok: "✅ OK",
+                ri_max: "Max {limit}°C",
+                ri_dew: "Dew Point",
+                ri_cond_risk: "CONDENSATION RISK",
+                ri_safe: "SAFE",
+                ri_dew_pt: "Pt: {dew}°C",
+                ri_heat_flux: "Heat Flux",
+                ri_flow_meter: "Flow Meter",
+                ri_circuit_dp: "Circuit ΔP",
+                ri_fin_eff: "Fin Efficiency",
+                ri_radiant: "Radiant Fraction",
+                ri_flow_regime: "Flow Regime",
+                ri_surface_temp: "Surface Temp.",
+                ri_downward: "Downward Loss",
+                ri_annual_energy: "Annual Energy",
+                ri_carbon: "Carbon",
+                ri_building_exergy: "Building Exergy",
+                ri_psi_room: "ψ_R (Room)",
+                ri_exergy_eff: "Exergy Eff.",
+                btn_charts: "📊 Thermal Charts ▼",
+                chart_wave_title: "2. Horizontal Surface Temperature Ripple",
+                chart_wave_legend: "Surface Temp. Ripple °C",
+                chart_temp_axis: "Temperature (°C)",
+                chart_wave_x: "Distance Between Pipes",
+                chart_min: "Min: {v}°C",
+                chart_grad_title: "1. Vertical Temperature Gradient (Layers)",
+                chart_grad_legend: "Temperature Drop (°C)",
+                layer_water: "Mean Water Temp.",
+                layer_screed: "Within Screed",
+                layer_surface: "Floor Surface",
+                layer_air: "Room Air",
+                alert_add_room: "Add at least one room!",
+                alert_server: "Server error: ",
+                alert_conn: "Connection error! Check if the Python server is running.\n\n",
+                vlbl_boiler_water: "Boiler water",
+                vlbl_altitude: "Altitude",
+                vlbl_rh: "Relative humidity",
+                vlbl_r_ins: "Insulation R-value",
+                vlbl_dist_main: "Main line distance",
+                vlbl_cop: "COP",
+                vlbl_boiler_eff: "Boiler efficiency (e.g. 0.90)",
+                vlbl_hours: "Operating hours",
+                vlbl_co2: "CO2 factor",
+                vlbl_delta_t: "Delta-T Water",
+                vlbl_gross_area: "Gross area",
+                vlbl_indoor_temp: "Indoor temperature",
+                vlbl_spacing: "Pipe spacing",
+                vlbl_dist_coll: "Distance to manifold",
+                vlbl_active_area: "Active area",
+                vlbl_facade_len: "Façade length",
+                vlbl_height: "Room height",
+                vlbl_window_area: "Window area",
+                vmsg_nan: "{label}: enter a valid number.",
+                vmsg_min: "{label}: must be at least {min}{unit}.",
+                vmsg_max: "{label}: must be at most {max}{unit}.",
+                vmsg_window_gross: "Window area ({window}m²) cannot exceed gross wall area ({gross}m²).",
+                vmsg_active_max: "Active area cannot exceed 100%.",
+                vmsg_empty_facade: "Façade, height or window area cannot be left empty.",
+                vmsg_t_room_high: "Indoor temp ({t}°C) is equal to/greater than boiler return temp ({tr}°C): heating impossible."
+            },
+            tr: {
+                app_subtitle: "Akademik Termodinamik & Isı Transferi (v0.19.0)",
+                sec_climate:  "🌍 İklim ve Nem Ayarları",
+                sec_building: "🏠 Bina ve Mimari Ayarlar",
+                sec_boiler:   "Kazan, Ana Hat & Glikol Ayarları",
+                sec_eco:      "Çevresel Verimlilik (Eco-Settings)",
+                sec_rooms:    "Odalar (Akademik Termodinamik)",
+                sec_summary:       "Tüm Ev Özeti",
+                sec_summary_badge: "🛠️ Şantiye Dashboard",
+                sec_room_report:   "Oda Oda (Lokal) Tesisat ve Teşhis Raporu",
+                lbl_climate_zone: "İklim Bölgesi",
+                opt_zone1: "Bölge 1: Sıcak (Örn: Antalya)",
+                opt_zone2: "Bölge 2: Ilıman (Örn: İstanbul)",
+                opt_zone3: "Bölge 3: Soğuk (Örn: Ankara)",
+                opt_zone4: "Bölge 4: Sert (Örn: Erzurum)",
+                lbl_altitude: "Rakım (m)",
+                lbl_rh: "Bağıl Nem (%)",
+                lbl_wind: "Rüzgar Maruziyeti",
+                opt_wind_sheltered: "Korunaklı (Şehir İçi)",
+                opt_wind_normal: "Normal (Banliyö)",
+                opt_wind_open: "Açık Arazi (+15% Kayıp)",
+                lbl_bld_type: "Bina Tipi Seçimi",
+                opt_bld_apartment: "🏢 Apartman (Tüm odaların altı aynı)",
+                opt_bld_detached: "🏡 Müstakil / Dubleks (Her oda farklı olabilir)",
+                lbl_flat_position: "Daire Konumu",
+                opt_floor_middle: "Ara Kat",
+                opt_floor_ground: "Zemin Kat",
+                opt_floor_top: "Çatı Katı",
+                lbl_subfloor_type: "Zemin Altı Tipi",
+                opt_sub_ground: "Toprak Temaslı (10°C)",
+                opt_sub_garage: "Hava Temaslı/Otopark (5°C)",
+                lbl_roof_ins: "Çatı/Tavan Yalıtımı",
+                opt_roof_none: "Yalıtımsız Düz Çatı (U~2.50)",
+                opt_roof_min: "Minimum Yalıtım (U~0.80)",
+                opt_roof_ts825: "TS 825 Uyumlu (U~0.40)",
+                opt_roof_good: "İyi Yalıtımlı (U~0.20)",
+                info_below_flat: "Alt: Komşu daire 20°C (EN 12831)",
+                info_ground_soil: "Toprak temaslı zemin 10°C (EN 12831)",
+                info_air_garage: "Hava Temaslı/Otopark: 5°C (EN 12831)",
+                info_ceiling_loss: "Tavan Kaybı modele dahil",
+                lbl_boiler_temp: "Kazan Su Sıc. (°C)",
+                lbl_glycol: "Antifriz / Glikol Oranı",
+                opt_glycol_0: "%0 (Saf Su)",
+                opt_glycol_10: "%10 Glikol",
+                opt_glycol_20: "%20 Glikol",
+                opt_glycol_30: "%30 Glikol",
+                lbl_pipe_material: "Oda Borusu Malzemesi",
+                lbl_sub_ins: "Alt Yalıtım (R)",
+                lbl_boiler_manifold: "Kazan→Kollektör (m)",
+                lbl_main_diameter: "Ana Boru Çapı",
+                lbl_delta_t: "Delta-T Su (°C)",
+                lbl_cop: "Sistem Verimi (COP)",
+                lbl_hours: "Yıllık Çalışma (Saat)",
+                lbl_co2: "Emisyon (kg CO2/kWh)",
+                lbl_heat_source: "Isı Kaynağı (Ekserji)",
+                opt_src_hp: "♨️ Isı Pompası",
+                opt_src_gas: "🔥 Doğalgaz Kazanı",
+                opt_src_elec: "⚡ Elektrikli Direnç",
+                opt_src_solar: "☀️ Güneş Enerjili",
+                btn_add_room: "+ Yeni Oda Ekle",
+                banner_title: "⛔ Hesaplama başlatılamıyor — lütfen hataları düzeltin:",
+                btn_analyze: "Tüm Sistemi Analiz Et",
+                dash_t_out: "Dış Sıc.",
+                dash_t_mean: "T_mean",
+                dash_manifold: "Kollektör",
+                dash_pump: "Pompa",
+                dash_consumption: "Tüketim",
+                dash_carbon: "Karbon İzi",
+                dash_co2_red: "CO2 Azaltma",
+                dash_eta_i: "η_I",
+                dash_psi_r: "ψ_R (Sistem)",
+                unit_ports: "Ağız",
+                waiting_data: "Şantiye verileri bekleniyor...",
+                default_living: "Büyük Salon",
+                default_bath: "Banyo",
+                room: "Oda",
+                btn_remove: "X SİL",
+                lbl_room_name: "Oda Adı",
+                lbl_gross_area: "Brüt Alan (m²)",
+                lbl_indoor_temp: "İç Sıcaklık (°C)",
+                lbl_en_type: "EN 1264 Tipi",
+                opt_en_living: "Oturma/Yaşam (Max 29°C)",
+                opt_en_wet: "Banyo/Islak (Max 33°C)",
+                opt_en_edge: "Çevre/Kenar (Max 35°C)",
+                adv_title: "🔬 İleri Termodinamik Ayarları (F2, F3)",
+                lbl_active_area: "Aktif Alan % (F2) ℹ️",
+                ttl_active_area: "Sabit mobilya vs düşülmüş aktif borulama alanı",
+                lbl_ventilation: "Hibrit Panel (F3) ℹ️",
+                ttl_ventilation: "Mekanik havalandırma konveksiyonu artırır",
+                opt_vent_natural: "Doğal (Yok)",
+                opt_vent_forced: "Zorlamalı Havalandırma (Var)",
+                lbl_layout: "Döşeme Deseni ℹ️",
+                ttl_layout: "Döşeme geometrisi boru metrajını ve ısı uniformitesini etkiler",
+                opt_layout_meander: "🐍 Serpantin (Meander)",
+                opt_layout_spiral: "🌀 Spiral (Salyangoz)",
+                opt_layout_double: "↔️ Çift Serpantin",
+                lbl_to_manifold: "Kollektöre (m)",
+                lbl_spacing: "Boru Aralığı (m)",
+                lbl_cover: "Üst Zemin",
+                opt_cover_ceramic: "Seramik",
+                opt_cover_parquet: "Parke",
+                opt_cover_carpet: "Halı",
+                lbl_subfloor_detached: "Zemin Altı (Müstakil)",
+                opt_floor_heated: "Isıtılan Kat (20°C)",
+                opt_floor_soil: "Toprak Zemin (10°C)",
+                opt_floor_basement: "Bodrum/Garaj (5°C)",
+                opt_floor_exposed: "Açık Hava (Dış Sıc.)",
+                lbl_ceiling_cond: "Tavan Durumu",
+                opt_roof_upper: "Üst Kat Var (Isı kaybı yok)",
+                opt_roof_top: "Çatı Katı (Tavan Kaybı Var)",
+                facade_title: "🔍 Dış Cephe (Isı Kaybı) Parametreleri",
+                lbl_facade_len: "Cephe Uz. (m)",
+                lbl_height: "Yükseklik (m)",
+                lbl_window_area: "Cam Alanı (m²)",
+                lbl_wall_ins: "Duvar Yalıtımı",
+                opt_wall_old: "Eski/Yalıtımsız (U~1.5)",
+                opt_wall_std: "Standart (U~0.6)",
+                opt_wall_good: "İyi Yalıtımlı (U~0.3)",
+                lbl_window_type: "Pencere Tipi",
+                opt_win_single: "Tek Cam (U~5.0)",
+                opt_win_double: "Standart Çift Cam (U~2.8)",
+                opt_win_lowe: "Low-E/Sinerji (U~1.3)",
+                tag_sufficient: "YETERLİ (Kapasite: %{cap})",
+                tag_insufficient: "❌ YETERSİZ (Açık: {deficit} W)",
+                tag_critical: "KRİTİK DEVRE",
+                tag_multizone: "ÇOKLU ZON ({n} Hat)",
+                tag_en_violation: "⚠️ EN 1264 İHLALİ (> {limit}°C)",
+                regime_laminar: "Laminer (Re:{re})",
+                regime_transitional: "Geçiş (Re:{re})",
+                regime_turbulent: "Türbülans (Re:{re})",
+                hdr_loss: "Kayıp:",
+                hdr_system: "Sistem:",
+                ri_sufficiency: "Yeterlilik",
+                ri_sufficient_short: "✅ YETERLİ",
+                ri_insufficient_short: "❌ YETERSİZ",
+                ri_cap: "Kap: %{cap}",
+                ri_deficit: "Açık: {deficit} W",
+                ri_zoning: "Zonlama",
+                ri_loops: "{n} Hat",
+                ri_single_loop: "Tek Hat",
+                ri_per_loop: "{len}m/hat",
+                ri_en1264: "EN 1264",
+                ri_violation: "⚠️ İHLAL",
+                ri_ok: "✅ UYGUN",
+                ri_max: "Max {limit}°C",
+                ri_dew: "Çiğlenme",
+                ri_cond_risk: "YOĞUŞMA RİSKİ",
+                ri_safe: "GÜVENLİ",
+                ri_dew_pt: "Nkt: {dew}°C",
+                ri_heat_flux: "Isı Akısı",
+                ri_flow_meter: "Debimetre",
+                ri_circuit_dp: "Devre Direnci",
+                ri_fin_eff: "Kanat Verimi",
+                ri_radiant: "Radyant Oran",
+                ri_flow_regime: "Akış Rejimi",
+                ri_surface_temp: "Yüzey Sıc.",
+                ri_downward: "Aşağı Kaçan",
+                ri_annual_energy: "Yıllık Enerji",
+                ri_carbon: "Karbon",
+                ri_building_exergy: "Bina Ekserji",
+                ri_psi_room: "ψ_R (Oda)",
+                ri_exergy_eff: "Ekserji Ver.",
+                btn_charts: "📊 Termal Grafikler ▼",
+                chart_wave_title: "2. Yatay Yüzey Sıcaklığı Dalgalanması (Ripple)",
+                chart_wave_legend: "Yüzey Sıcaklığı Dalgalanması °C",
+                chart_temp_axis: "Sıcaklık (°C)",
+                chart_wave_x: "İki Boru Arası Mesafe",
+                chart_min: "Min: {v}°C",
+                chart_grad_title: "1. Dikey Sıcaklık Gradyanı (Katmanlar)",
+                chart_grad_legend: "Sıcaklık Düşüşü (°C)",
+                layer_water: "Ort. Su Sıcaklığı",
+                layer_screed: "Şap İçi",
+                layer_surface: "Zemin Yüzeyi",
+                layer_air: "Oda Havası",
+                alert_add_room: "En az bir oda ekleyin!",
+                alert_server: "Sunucu hatası: ",
+                alert_conn: "Bağlantı hatası! Python sunucusu açık mı kontrol edin.\n\n",
+                vlbl_boiler_water: "Kazan suyu",
+                vlbl_altitude: "Rakım",
+                vlbl_rh: "Bağıl nem",
+                vlbl_r_ins: "Yalıtım R-değeri",
+                vlbl_dist_main: "Ana hat mesafesi",
+                vlbl_cop: "COP",
+                vlbl_boiler_eff: "Kazan Verimi (Örn: 0.90)",
+                vlbl_hours: "Çalışma saati",
+                vlbl_co2: "CO2 faktörü",
+                vlbl_delta_t: "Delta-T Su",
+                vlbl_gross_area: "Brüt alan",
+                vlbl_indoor_temp: "İç sıcaklık",
+                vlbl_spacing: "Boru aralığı",
+                vlbl_dist_coll: "Kollektöre mesafe",
+                vlbl_active_area: "Aktif alan",
+                vlbl_facade_len: "Cephe uzunluğu",
+                vlbl_height: "Oda yüksekliği",
+                vlbl_window_area: "Cam alanı",
+                vmsg_nan: "{label}: geçerli bir sayı girin.",
+                vmsg_min: "{label}: en az {min}{unit} olmalı.",
+                vmsg_max: "{label}: en fazla {max}{unit} olabilir.",
+                vmsg_window_gross: "Cam alanı ({window}m²), duvar brüt alanından ({gross}m²) büyük olamaz.",
+                vmsg_active_max: "Aktif alan %100'ü geçemez.",
+                vmsg_empty_facade: "Dış cephe, yükseklik veya cam alanı boş bırakılamaz.",
+                vmsg_t_room_high: "İç sıcaklık ({t}°C), kazan dönüş suyu sıcaklığına ({tr}°C) eşit veya büyük: ısıtma yapılamaz."
+            }
+        };
+
+        let currentLang = localStorage.getItem('lang') || 'en';
+
+        function t(key, vars) {
+            const table = I18N[currentLang] || I18N.en;
+            let str = (table[key] !== undefined) ? table[key] : (I18N.en[key] !== undefined ? I18N.en[key] : key);
+            if (vars) {
+                for (const k in vars) {
+                    str = str.split('{' + k + '}').join(vars[k]);
+                }
+            }
+            return str;
+        }
+
+        // Apply translations to all static elements carrying data-i18n / data-i18n-title
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.getAttribute('data-i18n'));
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                el.title = t(el.getAttribute('data-i18n-title'));
+            });
+            document.documentElement.lang = currentLang;
+
+            const enSpan = document.getElementById('lang-opt-en');
+            const trSpan = document.getElementById('lang-opt-tr');
+            if (enSpan && trSpan) {
+                enSpan.classList.toggle('active', currentLang === 'en');
+                trSpan.classList.toggle('active', currentLang === 'tr');
+            }
+            if (document.getElementById('apt_floor_info')) updateAptFloorInfo();
+        }
+
+        function toggleLang() {
+            currentLang = (currentLang === 'en') ? 'tr' : 'en';
+            localStorage.setItem('lang', currentLang);
+            applyTranslations();
+            renderResults();  // re-render results & charts in the new language (no recalculation)
+        }
 
         window.onload = () => {
-            addRoom("Büyük Salon", 45, 4, "living");
-            addRoom("Banyo", 15, 8, "wet");
+            addRoom(t('default_living'), 45, 4, "living");
+            addRoom(t('default_bath'), 15, 8, "wet");
             toggleBuildingType();
+            applyTranslations();
         };
 
         function toggleBuildingType() {
@@ -298,31 +739,29 @@
                 zeminGroup.style.display = 'none';
                 catiGroup.style.display = 'none';
                 info.style.color = '#2e7d32';
-                info.textContent = 'Alt: daire 20°C (EN 12831)';
+                info.textContent = t('info_below_flat');
             } else if (val === 'zemin-kat') {
                 zeminGroup.style.display = 'block';
                 catiGroup.style.display = 'none';
                 const zeminType = document.getElementById('sys_zemin_type').value;
                 if (zeminType === 'ground') {
                     info.style.color = '#e65100';
-                    info.textContent = 'Toprak temasli zemin 10°C (EN12831)';
+                    info.textContent = t('info_ground_soil');
                 } else {
                     info.style.color = '#e65100';
-                    info.textContent = 'Hava Temasli/Otopark: 5°C (EN12831)';
+                    info.textContent = t('info_air_garage');
                 }
-            }else if (val === 'cati-kati') {
+            } else if (val === 'cati-kati') {
                 zeminGroup.style.display = 'none';
                 catiGroup.style.display = 'block';
                 info.style.color = '#1565c0';
-                info.textContent = 'Tavan Kaybı modele dahil';
+                info.textContent = t('info_ceiling_loss');
             }
         }
 
         // ============================================================
         // VALIDATION CORE
         // ============================================================
-
-        // Bir input'a inline hata bağla; her input için bir kez çağrılır
         function attachValidator(inputEl, validatorFn) {
             const errorEl = inputEl.nextElementSibling;
             const validate = () => {
@@ -345,26 +784,23 @@
             inputEl.addEventListener('blur',  validate);
         }
 
-        // Global inputlara validator bağla (sayfa yüklenince)
         function bindGlobalValidators() {
-            bindV('sys_t_water',  v => rangeCk(v, 25, 60,  '°C', 'Kazan suyu'));
-            bindV('sys_altitude', v => rangeCk(v,  0, 3000, 'm',  'Rakım'));
-            bindV('sys_rh',       v => rangeCk(v, 10, 100,  '%',  'Bağıl nem'));
-            bindV('sys_r_ins',    v => rangeCk(v, 0.5, 5.0, '',   'Yalıtım R-değeri'));
-            bindV('sys_dist_main',v => rangeCk(v,  1, 50,   'm',  'Ana hat mesafesi'));
-
+            bindV('sys_t_water',  v => rangeCk(v, 25, 60,  '°C', 'vlbl_boiler_water'));
+            bindV('sys_altitude', v => rangeCk(v,  0, 3000, 'm',  'vlbl_altitude'));
+            bindV('sys_rh',       v => rangeCk(v, 10, 100,  '%',  'vlbl_rh'));
+            bindV('sys_r_ins',    v => rangeCk(v, 0.5, 5.0, '',   'vlbl_r_ins'));
+            bindV('sys_dist_main',v => rangeCk(v,  1, 50,   'm',  'vlbl_dist_main'));
             bindV('eco_cop', v => {
                 const heatSource = document.getElementById('eco_heat_source').value;
                 if (heatSource === "1") {
-                    return rangeCk(v, 1.0, 7.0, '', 'COP');
+                    return rangeCk(v, 1.0, 7.0, '', 'vlbl_cop');
                 } else {
-                    return rangeCk(v, 0.1, 1.0, '', 'Kazan Verimi (Örn: 0.90)');
+                    return rangeCk(v, 0.1, 1.0, '', 'vlbl_boiler_eff');
                 }
             });
-            
-            bindV('eco_hours',    v => rangeCk(v, 500, 8760, 'sa', 'Çalışma saati'));
-            bindV('eco_co2',      v => rangeCk(v, 0.05, 2.0, 'kg/kWh', 'CO2 faktörü'));
-            bindV('sys_delta_T',  v => rangeCk(v, 2, 20, '°C', 'Delta_T_Su'));
+            bindV('eco_hours',    v => rangeCk(v, 500, 8760, ' h', 'vlbl_hours'));
+            bindV('eco_co2',      v => rangeCk(v, 0.05, 2.0, ' kg/kWh', 'vlbl_co2'));
+            bindV('sys_delta_T',  v => rangeCk(v, 2, 20, '°C', 'vlbl_delta_t'));
         }
 
         function bindV(id, fn) {
@@ -372,28 +808,25 @@
             if (el) attachValidator(el, fn);
         }
 
-        // Genel aralık kontrolü — hata nesnesi veya null döner
-        function rangeCk(v, min, max, unit, label) {
-            if (isNaN(v))        return { level: 'error', msg: `${label}: geçerli bir sayı girin.` };
-            if (v < min)         return { level: 'error', msg: `${label}: en az ${min}${unit} olmalı.` };
-            if (v > max)         return { level: 'error', msg: `${label}: en fazla ${max}${unit} olabilir.` };
+        function rangeCk(v, min, max, unit, labelKey) {
+            const label = t(labelKey);
+            if (isNaN(v)) return { level: 'error', msg: t('vmsg_nan', { label }) };
+            if (v < min)  return { level: 'error', msg: t('vmsg_min', { label, min, unit }) };
+            if (v > max)  return { level: 'error', msg: t('vmsg_max', { label, max, unit }) };
             return null;
         }
 
-        // Oda kartı inputlarına validator bağla
         function bindRoomValidators(card) {
             const q = cls => card.querySelector(cls);
+            attachValidator(q('.r-area'),        v => rangeCk(v, 2, 200,     'm²', 'vlbl_gross_area'));
+            attachValidator(q('.r-temp'),        v => rangeCk(v, 15, 30,     '°C', 'vlbl_indoor_temp'));
+            attachValidator(q('.r-spacing'),     v => rangeCk(v, 0.05, 0.30, 'm',  'vlbl_spacing'));
+            attachValidator(q('.r-dist'),        v => rangeCk(v, 1, 30,      'm',  'vlbl_dist_coll'));
+            attachValidator(q('.r-active-area'), v => rangeCk(v, 10, 100,    '%',  'vlbl_active_area'));
+            attachValidator(q('.r-ext-wall'),    v => rangeCk(v, 0, 30,      'm',  'vlbl_facade_len'));
+            attachValidator(q('.r-height'),      v => rangeCk(v, 2.2, 5.0,   'm',  'vlbl_height'));
+            attachValidator(q('.r-window'),      v => rangeCk(v, 0, 50,      'm²', 'vlbl_window_area'));
 
-            attachValidator(q('.r-area'),        v => rangeCk(v, 2, 200,     'm²', 'Brüt alan'));
-            attachValidator(q('.r-temp'),        v => rangeCk(v, 15, 30,     '°C', 'İç sıcaklık'));
-            attachValidator(q('.r-spacing'),     v => rangeCk(v, 0.05, 0.30, 'm',  'Boru aralığı'));
-            attachValidator(q('.r-dist'),        v => rangeCk(v, 1, 30,      'm',  'Kollektöre mesafe'));
-            attachValidator(q('.r-active-area'), v => rangeCk(v, 10, 100,    '%',  'Aktif alan'));
-            attachValidator(q('.r-ext-wall'),    v => rangeCk(v, 0, 30,      'm',  'Cephe uzunluğu'));
-            attachValidator(q('.r-height'),      v => rangeCk(v, 2.2, 5.0,   'm',  'Oda yüksekliği'));
-            attachValidator(q('.r-window'),      v => rangeCk(v, 0, 50,      'm²', 'Cam alanı'));
-
-            // Çapraz kontrol: cam alanı > duvar brüt alanı
             const crossCheck = () => {
                 const wallLen = parseFloat(q('.r-ext-wall').value) || 0;
                 const height  = parseFloat(q('.r-height').value)   || 0;
@@ -404,7 +837,7 @@
                 if (window > grossWall && grossWall > 0) {
                     winEl.classList.add('input-invalid');
                     if (errEl && errEl.classList.contains('field-error')) {
-                        errEl.textContent = `Cam Alanı (${window}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`;
+                        errEl.textContent = t('vmsg_window_gross', { window: window, gross: grossWall.toFixed(1) });
                         errEl.classList.add('visible');
                     }
                 } else {
@@ -414,22 +847,18 @@
                     }
                 }
             };
-
             q('.r-ext-wall').addEventListener('input', crossCheck);
             q('.r-height').addEventListener('input',   crossCheck);
             q('.r-window').addEventListener('input',   crossCheck);
 
-            // Çapraz kontrol: aktif alan > brüt alan (mantıksal)
             const activeCheck = () => {
-                const area = parseFloat(q('.r-area').value) || 0;
                 const activePerc = parseFloat(q('.r-active-area').value) || 0;
                 const activeEl = q('.r-active-area');
                 const errEl = activeEl.nextElementSibling;
-                
                 if (activePerc > 100) {
                     activeEl.classList.add('input-invalid');
                     if (errEl && errEl.classList.contains('field-error')) {
-                        errEl.textContent = 'Aktif alan %100\'ü geçemez.';
+                        errEl.textContent = t('vmsg_active_max');
                         errEl.classList.add('visible');
                     }
                 } else {
@@ -439,82 +868,75 @@
                     }
                 }
             };
-
             q('.r-active-area').addEventListener('input', activeCheck);
         }
 
         // ============================================================
-        // VALIDATION SUMMARY — "Analiz Et" öncesi tam tarama
+        // VALIDATION SUMMARY — full scan before "Analyze"
         // ============================================================
         function validateAll() {
             const errors = [];
-
-            // Global alanlar
             const checks = [
-                ['sys_t_water',    25, 60,    '°C',      'Kazan su sıcaklığı'],
-                ['sys_altitude',   0, 3000,   'm',       'Rakım'],
-                ['sys_rh',         10, 100,   '%',       'Bağıl nem'],
-                ['sys_r_ins',      0.5, 5.0,  '',        'Alt yalıtım R-değeri'],
-                ['sys_dist_main',  1, 50,     'm',       'Kazan→Kollektör mesafesi'],
-                ['eco_hours',      500, 8760, ' sa',     'Yıllık çalışma saati'],
-                ['eco_co2',        0.05, 2.0, ' kg/kWh', 'CO2 faktörü'],
-                ['sys_delta_T',    2, 20,     '°C',      'Delta-T Su (°C)'],
+                ['sys_t_water',    25, 60,    '°C',      'vlbl_boiler_water'],
+                ['sys_altitude',   0, 3000,   'm',       'vlbl_altitude'],
+                ['sys_rh',         10, 100,   '%',       'vlbl_rh'],
+                ['sys_r_ins',      0.5, 5.0,  '',        'vlbl_r_ins'],
+                ['sys_dist_main',  1, 50,     'm',       'vlbl_dist_main'],
+                ['eco_hours',      500, 8760, ' h',      'vlbl_hours'],
+                ['eco_co2',        0.05, 2.0, ' kg/kWh', 'vlbl_co2'],
+                ['sys_delta_T',    2, 20,     '°C',      'vlbl_delta_t'],
             ];
 
             const heatSource = document.getElementById('eco_heat_source').value;
             const copVal = parseFloat(document.getElementById('eco_cop').value);
             const copResult = (heatSource === "1")
-                ? rangeCk(copVal, 1.0, 7.0, '', 'COP')
-                : rangeCk(copVal, 0.1, 1.0, '', 'Kazan/Sistem Verimi');
-            if (copResult) errors.push(`COP: ${copResult.msg}`);
+                ? rangeCk(copVal, 1.0, 7.0, '', 'vlbl_cop')
+                : rangeCk(copVal, 0.1, 1.0, '', 'vlbl_boiler_eff');
+            if (copResult) errors.push(copResult.msg);
 
-            checks.forEach(([id, min, max, unit, label]) => {
+            checks.forEach(([id, min, max, unit, labelKey]) => {
                 const v = parseFloat(document.getElementById(id).value);
-                const r = rangeCk(v, min, max, unit, label);
-                if (r) errors.push(`${label}: ${r.msg}`);
+                const r = rangeCk(v, min, max, unit, labelKey);
+                if (r) errors.push(r.msg);
             });
 
-            // Oda bazlı
             const roomCards = document.querySelectorAll('.room-card');
             roomCards.forEach((card, idx) => {
-                const name = card.querySelector('.r-name').value || `Oda ${idx + 1}`;
+                const name = card.querySelector('.r-name').value || (t('room') + ' ' + (idx + 1));
                 const q = cls => parseFloat(card.querySelector(cls).value);
 
                 const roomChecks = [
-                    [q('.r-area'),        2,    200,  'm²', 'Brüt alan'],
-                    [q('.r-temp'),       15,     30,  '°C', 'İç sıcaklık'],
-                    [q('.r-spacing'),  0.05,   0.30,  'm',  'Boru aralığı'],
-                    [q('.r-dist'),        1,     30,  'm',  'Kollektöre mesafe'],
-                    [q('.r-active-area'),10,    100,  '%',  'Aktif alan'],
-                    [q('.r-ext-wall'),    0,     30,  'm',  'Cephe uzunluğu'],
-                    [q('.r-height'),    2.2,    5.0,  'm',  'Oda yüksekliği'],
-                    [q('.r-window'),      0,     50,  'm²', 'Cam alanı'],
+                    [q('.r-area'),        2,    200,  'm²', 'vlbl_gross_area'],
+                    [q('.r-temp'),       15,     30,  '°C', 'vlbl_indoor_temp'],
+                    [q('.r-spacing'),  0.05,   0.30,  'm',  'vlbl_spacing'],
+                    [q('.r-dist'),        1,     30,  'm',  'vlbl_dist_coll'],
+                    [q('.r-active-area'),10,    100,  '%',  'vlbl_active_area'],
+                    [q('.r-ext-wall'),    0,     30,  'm',  'vlbl_facade_len'],
+                    [q('.r-height'),    2.2,    5.0,  'm',  'vlbl_height'],
+                    [q('.r-window'),      0,     50,  'm²', 'vlbl_window_area'],
                 ];
-                roomChecks.forEach(([v, min, max, unit, label]) => {
-                    const r = rangeCk(v, min, max, unit, label);
+                roomChecks.forEach(([v, min, max, unit, labelKey]) => {
+                    const r = rangeCk(v, min, max, unit, labelKey);
                     if (r) errors.push(`"${name}" — ${r.msg}`);
                 });
 
-                // Çapraz: cam > duvar brüt alanı ve boş alan kontrolü
                 const winArea = q('.r-window');
                 const extWall = q('.r-ext-wall');
                 const rHeight = q('.r-height');
-
                 if (isNaN(winArea) || isNaN(extWall) || isNaN(rHeight)) {
-                    errors.push(`"${name}" — Dış cephe, yükseklik veya cam alanı boş bırakılamaz.`);
+                    errors.push(`"${name}" — ${t('vmsg_empty_facade')}`);
                 } else {
                     const grossWall = extWall * rHeight;
                     if (winArea > grossWall && grossWall > 0) {
-                        errors.push(`"${name}" — Cam alanı (${winArea}m²), duvar brüt alanından (${grossWall.toFixed(1)}m²) büyük olamaz.`);
+                        errors.push(`"${name}" — ${t('vmsg_window_gross', { window: winArea, gross: grossWall.toFixed(1) })}`);
                     }
                 }
 
-                // Çapraz: iç sıcaklık > kazan suyu (ısıtma imkansız)
                 const t_water  = parseFloat(document.getElementById('sys_t_water').value);
                 const delta_t  = parseFloat(document.getElementById('sys_delta_T').value);
                 const t_return = t_water - delta_t;
                 if (q('.r-temp') >= t_return) {
-                    errors.push(`"${name}" — İç sıcaklık (${q('.r-temp')}°C), kazan dönüş suyu sıcaklığına (${t_return}°C) eşit veya büyük: ısıtma yapılamaz.`);
+                    errors.push(`"${name}" — ${t('vmsg_t_room_high', { t: q('.r-temp'), tr: t_return })}`);
                 }
             });
 
@@ -544,123 +966,122 @@
             let typeWet    = (defaultType === "wet")    ? "selected" : "";
             let typeEdge   = (defaultType === "edge")   ? "selected" : "";
 
+            const roomName = defaultName || (t('room') + ' ' + roomCount);
+
             const roomHtml = `
                 <div class="room-card" id="room_${roomCount}">
-                    <button class="remove-btn" onclick="removeRoom('room_${roomCount}')">X SİL</button>
+                    <button class="remove-btn" onclick="removeRoom('room_${roomCount}')" data-i18n="btn_remove">X DEL</button>
                     <div class="input-row">
-                        <div class="input-group"><label>Oda Adı</label><input type="text" class="r-name" value="${defaultName || 'Oda ' + roomCount}"></div>
+                        <div class="input-group"><label data-i18n="lbl_room_name">Room Name</label><input type="text" class="r-name" value="${roomName}"></div>
                         <div class="input-group">
-                            <label>Brüt Alan (m²)</label>
+                            <label data-i18n="lbl_gross_area">Gross Area (m²)</label>
                             <input type="number" class="r-area" value="${defaultArea}">
                             <div class="field-error"></div>
                         </div>
                         <div class="input-group">
-                            <label>İç Sıcaklık (°C)</label>
+                            <label data-i18n="lbl_indoor_temp">Indoor Temp. (°C)</label>
                             <input type="number" class="r-temp" value="20">
                             <div class="field-error"></div>
                         </div>
-                        <div class="input-group"><label style="color:#d81b60;">EN 1264 Tipi</label>
+                        <div class="input-group"><label style="color:#d81b60;" data-i18n="lbl_en_type">EN 1264 Type</label>
                             <select class="r-en-type" style="border-color:#d81b60;">
-                                <option value="29" ${typeLiving}>Oturma/Yaşam (Max 29°C)</option>
-                                <option value="33" ${typeWet}>Banyo/Islak (Max 33°C)</option>
-                                <option value="35" ${typeEdge}>Çevre/Kenar (Max 35°C)</option>
+                                <option value="29" ${typeLiving} data-i18n="opt_en_living">Living/Residential (Max 29°C)</option>
+                                <option value="33" ${typeWet} data-i18n="opt_en_wet">Bathroom/Wet (Max 33°C)</option>
+                                <option value="35" ${typeEdge} data-i18n="opt_en_edge">Perimeter/Edge (Max 35°C)</option>
                             </select>
                         </div>
                     </div>
-
                     <div class="loss-panel" style="background:#f3e5f5; border-color:#ce93d8;">
-                        <div style="font-size:11px; font-weight:bold; color:var(--academic); margin-bottom:5px;">🔬 İleri Termodinamik Ayarları (F2, F3)</div>
+                        <div style="font-size:11px; font-weight:bold; color:var(--academic); margin-bottom:5px;" data-i18n="adv_title">🔬 Advanced Thermodynamic Settings (F2, F3)</div>
                         <div class="input-row" style="margin-bottom:0;">
                             <div class="input-group">
-                                <label title="Sabit mobilya vs düşülmüş aktif borulama alanı">Aktif Alan % (F2) ℹ️</label>
+                                <label data-i18n="lbl_active_area" data-i18n-title="ttl_active_area" title="Fixed furniture vs deducted active piping area">Active Area % (F2) ℹ️</label>
                                 <input type="number" class="r-active-area" value="100" max="100" min="10">
                                 <div class="field-error"></div>
                             </div>
-                            <div class="input-group"><label title="Mekanik havalandırma konveksiyonu artırır">Hibrit Panel (F3) ℹ️</label>
+                            <div class="input-group"><label data-i18n="lbl_ventilation" data-i18n-title="ttl_ventilation" title="Mechanical ventilation increases convection">Hybrid Panel (F3) ℹ️</label>
                                 <select class="r-ventilation">
-                                    <option value="1.0" selected>Doğal (Yok)</option>
-                                    <option value="1.3">Zorlamalı Havalandırma (Var)</option>
+                                    <option value="1.0" selected data-i18n="opt_vent_natural">Natural (None)</option>
+                                    <option value="1.3" data-i18n="opt_vent_forced">Forced Ventilation (Yes)</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label title="Döşeme geometrisi boru metrajını ve ısı uniformitesini etkiler">Döşeme Deseni ℹ️</label>
+                                <label data-i18n="lbl_layout" data-i18n-title="ttl_layout" title="Floor geometry affects pipe length and heat uniformity">Floor Pattern ℹ️</label>
                                 <select class="r-layout">
-                                    <option value="1" selected>🐍 Serpantin (Meander)</option>
-                                    <option value="2">🌀 Spiral (Salyangoz)</option>
-                                    <option value="3">↔️ Çift Serpantin</option>
+                                    <option value="1" selected data-i18n="opt_layout_meander">🐍 Meander (Serpentine)</option>
+                                    <option value="2" data-i18n="opt_layout_spiral">🌀 Spiral (Snail)</option>
+                                    <option value="3" data-i18n="opt_layout_double">↔️ Double Meander</option>
                                 </select>
                             </div>
                         </div>
                     </div>
-
                     <div class="input-row" style="margin-top:10px;">
                         <div class="input-group">
-                            <label>Kollektöre (m)</label>
+                            <label data-i18n="lbl_to_manifold">To Manifold (m)</label>
                             <input type="number" class="r-dist" value="${defaultDist}">
                             <div class="field-error"></div>
                         </div>
                         <div class="input-group">
-                            <label>Boru Aralığı (m)</label>
+                            <label data-i18n="lbl_spacing">Pipe Spacing (m)</label>
                             <input type="number" class="r-spacing" value="0.15" step="0.05">
                             <div class="field-error"></div>
                         </div>
-                        <div class="input-group"><label>Üst Zemin</label>
+                        <div class="input-group"><label data-i18n="lbl_cover">Floor Covering</label>
                             <select class="r-cover">
-                                <option value="0.05">Seramik</option>
-                                <option value="0.10" selected>Parke</option>
-                                <option value="0.25">Halı</option>
+                                <option value="0.05" data-i18n="opt_cover_ceramic">Ceramic</option>
+                                <option value="0.10" selected data-i18n="opt_cover_parquet">Parquet</option>
+                                <option value="0.25" data-i18n="opt_cover_carpet">Carpet</option>
                             </select>
                         </div>
                         <div class="input-group room-floor-group" style="${displayStyle}">
-                            <label style="color:var(--primary);"> Zemin Altı (Müstakil)</label>
+                            <label style="color:var(--primary);" data-i18n="lbl_subfloor_detached"> Sub-floor (Detached)</label>
                             <select class="r-floor">
-                                <option value="heated" selected>Isıtılan Kat (20°C)</option>
-                                <option value="ground">Toprak Zemin (10°C)</option>
-                                <option value="garage">Bodrum/Garaj (5°C)</option>
-                                <option value="exposed">Açık Hava (Dış Sıc.)</option>
+                                <option value="heated" selected data-i18n="opt_floor_heated">Heated Floor (20°C)</option>
+                                <option value="ground" data-i18n="opt_floor_soil">Ground Soil (10°C)</option>
+                                <option value="garage" data-i18n="opt_floor_basement">Basement/Garage (5°C)</option>
+                                <option value="exposed" data-i18n="opt_floor_exposed">Open Air (Outdoor Temp.)</option>
                             </select>
                         </div>
                         <div class="input-group room-floor-group" style="${displayStyle}">
-                            <label style="color:var(--primary);">Tavan Durumu</label>
+                            <label style="color:var(--primary);" data-i18n="lbl_ceiling_cond">Ceiling Condition</label>
                             <select class="r-roof">
-                                <option value="none" selected>Üst Kat Var (Isı kaybı yok)</option>
-                                <option value="roof">Çatı Katı (Tavan Kaybı Var)</option>
+                                <option value="none" selected data-i18n="opt_roof_upper">Upper Floor Exists (No heat loss)</option>
+                                <option value="roof" data-i18n="opt_roof_top">Top Floor (Ceiling Loss)</option>
                             </select>
                         </div>
                     </div>
-
                     <div class="loss-panel">
-                        <div style="font-size:11px; font-weight:bold; color:var(--primary); margin-bottom:5px;">🔍 Dış Cephe (Isı Kaybı) Parametreleri</div>
+                        <div style="font-size:11px; font-weight:bold; color:var(--primary); margin-bottom:5px;" data-i18n="facade_title">🔍 Façade (Heat Loss) Parameters</div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Cephe Uz. (m)</label>
+                                <label data-i18n="lbl_facade_len">Façade Length (m)</label>
                                 <input type="number" class="r-ext-wall" value="4">
                                 <div class="field-error"></div>
                             </div>
                             <div class="input-group">
-                                <label>Yükseklik (m)</label>
+                                <label data-i18n="lbl_height">Height (m)</label>
                                 <input type="number" class="r-height" value="2.8">
                                 <div class="field-error"></div>
                             </div>
                             <div class="input-group">
-                                <label>Cam Alanı (m²)</label>
+                                <label data-i18n="lbl_window_area">Window Area (m²)</label>
                                 <input type="number" class="r-window" value="2">
                                 <div class="field-error"></div>
                             </div>
                         </div>
                         <div class="input-row" style="margin-bottom:0;">
-                            <div class="input-group"><label>Duvar Yalıtımı</label>
+                            <div class="input-group"><label data-i18n="lbl_wall_ins">Wall Insulation</label>
                                 <select class="r-u-wall">
-                                    <option value="1.5">Eski/Yalıtımsız (U~1.5)</option>
-                                    <option value="0.6" selected>Standart (U~0.6)</option>
-                                    <option value="0.3">İyi Yalıtımlı (U~0.3)</option>
+                                    <option value="1.5" data-i18n="opt_wall_old">Old/Uninsulated (U~1.5)</option>
+                                    <option value="0.6" selected data-i18n="opt_wall_std">Standard (U~0.6)</option>
+                                    <option value="0.3" data-i18n="opt_wall_good">Well Insulated (U~0.3)</option>
                                 </select>
                             </div>
-                            <div class="input-group"><label>Pencere Tipi</label>
+                            <div class="input-group"><label data-i18n="lbl_window_type">Window Type</label>
                                 <select class="r-u-window">
-                                    <option value="5.0">Tek Cam (U~5.0)</option>
-                                    <option value="2.8" selected>Standart Çift Cam (U~2.8)</option>
-                                    <option value="1.3">Low-E/Sinerji (U~1.3)</option>
+                                    <option value="5.0" data-i18n="opt_win_single">Single Glazing (U~5.0)</option>
+                                    <option value="2.8" selected data-i18n="opt_win_double">Standard Double Glazing (U~2.8)</option>
+                                    <option value="1.3" data-i18n="opt_win_lowe">Low-E/Synergy (U~1.3)</option>
                                 </select>
                             </div>
                         </div>
@@ -669,19 +1090,13 @@
             `;
             container.insertAdjacentHTML('beforeend', roomHtml);
 
-            // Yeni eklenen kartın inputlarına validator bağla
             const newCard = document.getElementById(`room_${roomCount}`);
             bindRoomValidators(newCard);
+            applyTranslations();  // translate the newly added card into the active language
         }
 
         function removeRoom(id) { document.getElementById(id).remove(); }
 
-        // ============================================================
-        // GLOBAL INPUT VALIDATORS — sayfa yüklenince bağla
-        // ============================================================
-
-        // Global inputlar için field-error div'leri HTML'de zaten mevcut,
-        // ama dinamik eklenmediğinden burada programatik ekliyoruz
         function ensureErrorDiv(id) {
             const el  = document.getElementById(id);
             if (!el) return;
@@ -701,8 +1116,6 @@
         // ============================================================
         // CHART MODULE
         // ============================================================
-
-        // Grafik verilerini globalden erişmek için sakla
         let chartData = [];
 
         function toggleCharts(id) {
@@ -725,8 +1138,8 @@
             chartData = [];
             for (let i = 0; i < result.q_total.length; i++) {
                 const room      = data.rooms[i];
-                const coverNameMap = { "0.05": "Seramik", "0.10": "Parke", "0.25": "Halı" };
-                const sourceNames  = { "1": "Isı Pompası", "2": "Doğalgaz", "3": "Elektrik", "4": "Güneş" };
+                const coverNameMap = { "0.05": t('opt_cover_ceramic'), "0.10": t('opt_cover_parquet'), "0.25": t('opt_cover_carpet') };
+                const sourceNames  = { "1": t('opt_src_hp'), "2": t('opt_src_gas'), "3": t('opt_src_elec'), "4": t('opt_src_solar') };
                 chartData.push({
                     drawn:      false,
                     name:       roomNames[i],
@@ -737,8 +1150,8 @@
                     t_surf:     result.t_surf[i],
                     t_water:    data.t_water,
                     r_cover:    room.r_cover,
-                    coverName:  coverNameMap[String(room.r_cover)] || "Kaplama",
-                    sourceName: sourceNames[String(data.heat_source)] || "Kaynak",
+                    coverName:  coverNameMap[String(room.r_cover)] || "Cover",
+                    sourceName: sourceNames[String(data.heat_source)] || "Source",
                     q_flux:     result.q_flux[i],
                     t_dew:      result.t_dew[i],
                     delta_T:    data.delta_T_water
@@ -746,7 +1159,6 @@
             }
         }
 
-        // HiDPI canvas setup — net görüntü için
         function setupHiDPI(canvas, cssW, cssH) {
             const dpr = window.devicePixelRatio || 1;
             canvas.width  = cssW * dpr;
@@ -758,31 +1170,25 @@
             return { ctx, W: cssW, H: cssH };
         }
 
-        // ─── Grafik 2: Yatay Yüzey Sıcaklığı Dalgalanması (Ripple) ──────
-        // Fizik: T(x) = T_room + (T_boru - T_room) * cosh(m*x_fin) / cosh(m*L/2)
-        // x ekseni = iki boru arası mesafe (cm), y ekseni = yüzey sıcaklığı
+        // Chart 2: Horizontal Surface Temperature Ripple
         function drawWaveChart(idx, d) {
             const canvas = document.getElementById(`wave_${idx}`);
             if (!canvas) return;
             const CSS_W = 320, CSS_H = 210;
             const { ctx, W, H } = setupHiDPI(canvas, CSS_W, CSS_H);
 
-            // Layout
             const PAD = { t: 52, b: 40, l: 46, r: 14 };
             const plotW = W - PAD.l - PAD.r;
             const plotH = H - PAD.t - PAD.b;
 
-            // Beyaz arka plan
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, W, H);
 
-            // Başlık
             ctx.fillStyle = '#222';
             ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('2. Yatay Yüzey Sıcaklığı Dalgalanması (Ripple)', W / 2, 18);
+            ctx.fillText(t('chart_wave_title'), W / 2, 18);
 
-            // Legend
             const legX = W / 2 - 90, legY = 28;
             ctx.fillStyle = 'rgba(210,70,70,0.22)';
             ctx.fillRect(legX, legY, 16, 11);
@@ -791,17 +1197,14 @@
             ctx.fillStyle = '#444';
             ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText('Yüzey Sıcaklığı Dalgalanması °C', legX + 20, legY + 9);
+            ctx.fillText(t('chart_wave_legend'), legX + 20, legY + 9);
 
             const L     = d.spacing;
             const m     = d.mParam;
             const mL2   = m * (L / 2);
 
-            // Fiziksel üst katman ısıl direnci hesaplanıyor: r_up = r_cover + r_concrete
-            // Şap (beton) k=1.4, kalınlık=0.05m -> r_concrete = 0.05 / 1.4
             const r_concrete = 0.05 / 1.4;
             const r_up = d.r_cover + r_concrete;
-
             const delta_ripple = d.q_flux * r_up;
             const T_pipe = d.t_surf + delta_ripple;
 
@@ -823,7 +1226,6 @@
             const cx = xPos => PAD.l + (xPos / L) * plotW;
             const cy = T    => PAD.t + (1 - (T - yMin) / (yMax - yMin)) * plotH;
 
-            // Grid yatay çizgiler
             const gridSteps = 4;
             for (let g = 0; g <= gridSteps; g++) {
                 const T_g = yMin + g * (yMax - yMin) / gridSteps;
@@ -834,17 +1236,15 @@
                 ctx.fillText(T_g.toFixed(1), PAD.l - 5, y_g + 3.5);
             }
 
-            // Y eksen başlığı
             ctx.save();
             ctx.translate(13, PAD.t + plotH / 2);
             ctx.rotate(-Math.PI / 2);
             ctx.textAlign = 'center';
             ctx.fillStyle = '#555';
             ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
-            ctx.fillText('Sıcaklık (°C)', 0, 0);
+            ctx.fillText(t('chart_temp_axis'), 0, 0);
             ctx.restore();
 
-            // Dolgulu alan
             const fillGrad = ctx.createLinearGradient(0, cy(tMax), 0, cy(midT));
             fillGrad.addColorStop(0, 'rgba(210,70,70,0.30)');
             fillGrad.addColorStop(1, 'rgba(210,70,70,0.04)');
@@ -855,66 +1255,55 @@
             ctx.closePath();
             ctx.fillStyle = fillGrad; ctx.fill();
 
-            // Ana eğri
             ctx.beginPath();
             pts.forEach((p, i) => i === 0 ? ctx.moveTo(cx(p.xPos), cy(p.T)) : ctx.lineTo(cx(p.xPos), cy(p.T)));
             ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.2;
             ctx.stroke();
 
-            // X ekseni: cm tick etiketleri
             const spacingCm = Math.round(L * 100);
             const tickCount = Math.min(spacingCm, 8);
             ctx.fillStyle = '#666'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-            for (let t = 0; t <= tickCount; t++) {
-                const cmVal = Math.round((t / tickCount) * spacingCm);
+            for (let tk = 0; tk <= tickCount; tk++) {
+                const cmVal = Math.round((tk / tickCount) * spacingCm);
                 const xPx   = cx(cmVal / 100);
                 ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(xPx, PAD.t + plotH); ctx.lineTo(xPx, PAD.t + plotH + 4); ctx.stroke();
                 ctx.fillText(cmVal + 'cm', xPx, PAD.t + plotH + 16);
             }
 
-            // X eksen başlığı
             ctx.fillStyle = '#555'; ctx.font = '10px "Segoe UI", Tahoma, sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('İki Boru Arası Mesafe', PAD.l + plotW / 2, H - 4);
+            ctx.fillText(t('chart_wave_x'), PAD.l + plotW / 2, H - 4);
 
-            // Tepe sıcaklık etiketleri (boru konumları)
             ctx.fillStyle = '#922'; ctx.font = 'bold 9.5px monospace'; ctx.textAlign = 'center';
             ctx.fillText(tMax.toFixed(1) + '°C', cx(0), cy(tMax) - 8);
             ctx.fillText(tMax.toFixed(1) + '°C', cx(L), cy(tMax) - 8);
 
-            // Min nokta etiketi
             ctx.fillStyle = '#444'; ctx.font = 'bold 9.5px monospace';
-            ctx.fillText('Min: ' + midT.toFixed(1) + '°C', cx(L / 2), cy(midT) + 15);
+            ctx.fillText(t('chart_min', { v: midT.toFixed(1) }), cx(L / 2), cy(midT) + 15);
 
-            // Çerçeve
             ctx.strokeStyle = '#dde3f0'; ctx.lineWidth = 1;
             ctx.strokeRect(PAD.l, PAD.t, plotW, plotH);
         }
 
-        // ─── Grafik 1: Dikey Sıcaklık Gradyanı (Katmanlar) ──────────────
-        // x ekseni = katman adları (Su → Şap → Zemin → Oda), y ekseni = sıcaklık
+        // Chart 1: Vertical Temperature Gradient (Layers)
         function drawGradientChart(idx, d) {
             const canvas = document.getElementById(`grad_${idx}`);
             if (!canvas) return;
             const CSS_W = 320, CSS_H = 210;
             const { ctx, W, H } = setupHiDPI(canvas, CSS_W, CSS_H);
 
-            // Layout
             const PAD = { t: 52, b: 46, l: 46, r: 14 };
             const plotW = W - PAD.l - PAD.r;
             const plotH = H - PAD.t - PAD.b;
 
-            // Beyaz arka plan
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, W, H);
 
-            // Başlık
             ctx.fillStyle = '#222';
             ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('1. Dikey Sıcaklık Gradyanı (Katmanlar)', W / 2, 18);
+            ctx.fillText(t('chart_grad_title'), W / 2, 18);
 
-            // Legend
             const legX = W / 2 - 70, legY = 28;
             ctx.fillStyle = 'rgba(74,144,210,0.22)';
             ctx.fillRect(legX, legY, 16, 11);
@@ -923,16 +1312,16 @@
             ctx.fillStyle = '#444';
             ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText('Sıcaklık Düşüşü (°C)', legX + 20, legY + 9);
+            ctx.fillText(t('chart_grad_legend'), legX + 20, legY + 9);
 
             const r_conc   = 0.05 / 1.4;
             const t_screed = d.t_surf + d.q_flux * (d.r_cover + r_conc);
 
             const layers = [
-                { label: 'Ort. Su Sıcaklığı', sub: '(T_mean)', T: d.t_mean },
-                { label: 'Şap İçi',           sub: '(T_c)', T: t_screed  },
-                { label: 'Zemin Yüzeyi',      sub: '(T_s)', T: d.t_surf  },
-                { label: 'Oda Havası',        sub: '(T_i)', T: d.t_room  },
+                { label: t('layer_water'),   sub: '(T_mean)', T: d.t_mean },
+                { label: t('layer_screed'),  sub: '(T_c)', T: t_screed  },
+                { label: t('layer_surface'), sub: '(T_s)', T: d.t_surf  },
+                { label: t('layer_air'),     sub: '(T_i)', T: d.t_room  },
             ];
 
             const NL     = layers.length;
@@ -944,7 +1333,6 @@
             const xOf = i => PAD.l + (i / (NL - 1)) * plotW;
             const yOf = T => PAD.t + (1 - (T - tMin) / tRange) * plotH;
 
-            // Grid yatay çizgiler
             const gridSteps = 4;
             for (let g = 0; g <= gridSteps; g++) {
                 const T_g = tMin + g * tRange / gridSteps;
@@ -955,17 +1343,15 @@
                 ctx.fillText(T_g.toFixed(0), PAD.l - 5, y_g + 3.5);
             }
 
-            // Y eksen başlığı
             ctx.save();
             ctx.translate(13, PAD.t + plotH / 2);
             ctx.rotate(-Math.PI / 2);
             ctx.textAlign = 'center';
             ctx.fillStyle = '#555';
             ctx.font = '10px "Segoe UI", Tahoma, sans-serif';
-            ctx.fillText('Sıcaklık (°C)', 0, 0);
+            ctx.fillText(t('chart_temp_axis'), 0, 0);
             ctx.restore();
 
-            // Dolgulu alan
             ctx.beginPath();
             ctx.moveTo(xOf(0), yOf(tMin));
             layers.forEach((l, i) => ctx.lineTo(xOf(i), yOf(l.T)));
@@ -976,47 +1362,35 @@
             fillGrad.addColorStop(1, 'rgba(74,144,210,0.05)');
             ctx.fillStyle = fillGrad; ctx.fill();
 
-            // Ana çizgi
             ctx.beginPath();
             layers.forEach((l, i) => i === 0 ? ctx.moveTo(xOf(i), yOf(l.T)) : ctx.lineTo(xOf(i), yOf(l.T)));
             ctx.strokeStyle = '#2980b9'; ctx.lineWidth = 2.2;
             ctx.stroke();
 
-            // Noktalar + etiketler
             layers.forEach((l, i) => {
                 const x = xOf(i), y = yOf(l.T);
-
-                // Nokta
                 ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2);
                 ctx.fillStyle = '#2980b9'; ctx.fill();
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-
-                // Sıcaklık etiketi (nokta üstü)
                 ctx.fillStyle = '#1a5276'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
                 ctx.fillText(l.T.toFixed(1) + '°C', x, y - 10);
-
-                // X eksen: katman adı
                 ctx.fillStyle = '#444'; ctx.font = '9.5px "Segoe UI", Tahoma, sans-serif';
                 ctx.fillText(l.label, x, PAD.t + plotH + 16);
                 ctx.fillStyle = '#999'; ctx.font = '9px monospace';
                 ctx.fillText(l.sub, x, PAD.t + plotH + 28);
-
-                // Tick
                 ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(x, PAD.t + plotH); ctx.lineTo(x, PAD.t + plotH + 4); ctx.stroke();
             });
 
-            // Çerçeve
             ctx.strokeStyle = '#dde3f0'; ctx.lineWidth = 1;
             ctx.setLineDash([]);
             ctx.strokeRect(PAD.l, PAD.t, plotW, plotH);
         }
 
         // ============================================================
-        // RUN SIMULATION
+        // RUN SIMULATION  (fetch + store state, then render)
         // ============================================================
         async function runSimulation() {
-            // Önce validasyon — hata varsa dur
             if (!validateAll()) return;
 
             const base_temp = parseFloat(document.getElementById('sys_climate').value);
@@ -1058,18 +1432,15 @@
                 let room_u_ceiling = 0.0;
 
                 if (bldType === 'apartment') {
-
                     room_u_ceiling = (apt_floor === 'cati-kati') ? parseFloat(document.getElementById('sys_u_ceiling').value) : 0.0;
-
                     if (apt_floor === 'ara-kat') {
-                        room_t_below = 20;   // EN12831 Isıtılan komşu alan
+                        room_t_below = 20;   // EN 12831 heated neighbouring zone
                     } else if (apt_floor === 'zemin-kat') {
                         const zeminType = document.getElementById('sys_zemin_type').value;
-                        room_t_below = (zeminType === 'ground') ? 10 : 5; //EN12831
+                        room_t_below = (zeminType === 'ground') ? 10 : 5; // EN 12831
                     } else if (apt_floor === 'cati-kati') {
-                        room_t_below = 20; // EN 12831 Isıtılan komşu alan
+                        room_t_below = 20; // EN 12831 heated neighbouring zone
                     }
-                    
                 } else {
                     const floor_type = card.querySelector('.r-floor').value;
                     if (floor_type === "ground")  room_t_below = 10;
@@ -1099,7 +1470,7 @@
                 });
             });
 
-            if (data.rooms.length === 0) return alert("En az bir oda ekleyin!");
+            if (data.rooms.length === 0) return alert(t('alert_add_room'));
 
             try {
                 const response = await fetch('http://127.0.0.1:5000/api/calculate', {
@@ -1110,128 +1481,147 @@
                 const result = await response.json();
 
                 if (result.status === 'error') {
-                    alert('Sunucu hatası: ' + result.message);
+                    alert(t('alert_server') + result.message);
                     return;
                 }
 
-                const totalManifoldPorts = result.num_zones.reduce((a, b) => a + b, 0);
+                // Store state so renderResults() can re-render on language switch
+                lastResult       = result;
+                lastData         = data;
+                lastRoomNames    = roomNames;
+                lastEn1264Limits = en1264Limits;
 
-                document.getElementById('res_t_out').innerText    = result.calculated_t_out.toFixed(1) + " °C";
-                document.getElementById('res_t_mean').innerText   = result.sys_t_mean.toFixed(1) + " °C";
-                document.getElementById('res_manifold').innerText = totalManifoldPorts + " Ağız";
-                document.getElementById('res_pump_w').innerText   = result.sys_pump_power.toFixed(1) + " W";
-                document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
-                document.getElementById('res_sys_co2').innerText  = result.sys_total_co2.toFixed(0) + " kg";
-                document.getElementById('res_co2_red').innerText  = result.sys_co2_reduction.toFixed(1) + " %";
-                document.getElementById('res_eta_I').innerText    = result.sys_eta_I.toFixed(3);
-                document.getElementById('res_psi_r').innerText    = result.sys_psi_r.toFixed(3);
+                renderResults();
+            } catch (error) {
+                alert(t('alert_conn') + error);
+            }
+        }
 
-                const resContainer = document.getElementById('results-container');
-                resContainer.innerHTML = '';
-                buildChartData(result, data, roomNames);
-                let maxDropIdx = result.p_drop.indexOf(Math.max(...result.p_drop));
+        // ============================================================
+        // RENDER RESULTS  (decoupled from calculation; language-aware)
+        // ============================================================
+        function renderResults() {
+            if (!lastResult) return;
+            const result       = lastResult;
+            const data         = lastData;
+            const roomNames    = lastRoomNames;
+            const en1264Limits = lastEn1264Limits;
 
-                for (let i = 0; i < result.q_total.length; i++) {
-                    const supplied_heat = result.q_flux[i] * (data.rooms[i].room_area * data.rooms[i].active_area / 100);
-                    const heat_loss     = result.q_loss[i];
-                    const isSufficient  = supplied_heat >= heat_loss;
+            const totalManifoldPorts = result.num_zones.reduce((a, b) => a + b, 0);
 
-                    const statusTag = isSufficient
-                        ? `<span style="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;"> YETERLİ (Kapasite: %${result.coverage_ratio[i].toFixed(0)})</span>`
-                        : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">❌ YETERSİZ (Açık: ${Math.abs(result.surplus_watt[i]).toFixed(0)} W)</span>`;
+            document.getElementById('res_t_out').innerText    = result.calculated_t_out.toFixed(1) + " °C";
+            document.getElementById('res_t_mean').innerText   = result.sys_t_mean.toFixed(1) + " °C";
+            document.getElementById('res_manifold').innerText = totalManifoldPorts + " " + t('unit_ports');
+            document.getElementById('res_pump_w').innerText   = result.sys_pump_power.toFixed(1) + " W";
+            document.getElementById('res_sys_energy').innerText = result.sys_total_energy.toFixed(0) + " kWh";
+            document.getElementById('res_sys_co2').innerText  = result.sys_total_co2.toFixed(0) + " kg";
+            document.getElementById('res_co2_red').innerText  = result.sys_co2_reduction.toFixed(1) + " %";
+            document.getElementById('res_eta_I').innerText    = result.sys_eta_I.toFixed(3);
+            document.getElementById('res_psi_r').innerText    = result.sys_psi_r.toFixed(3);
 
-                    const isCritical  = (i === maxDropIdx);
-                    const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">KRİTİK DEVRE</span>` : '';
-                    const multiZoneTag = (result.num_zones[i] > 1) ? `<span style="color:white; background:var(--info); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">ÇOKLU ZON (${result.num_zones[i]} Hat)</span>` : '';
+            const resContainer = document.getElementById('results-container');
+            resContainer.innerHTML = '';
+            buildChartData(result, data, roomNames);
+            let maxDropIdx = result.p_drop.indexOf(Math.max(...result.p_drop));
 
-                    let t_surf       = result.t_surf[i];
-                    let t_dew        = result.t_dew[i];
-                    let limit        = en1264Limits[i];
-                    let en1264Tag    = "";
-                    let t_surf_color = "var(--primary)";
+            for (let i = 0; i < result.q_total.length; i++) {
+                const supplied_heat = result.q_flux[i] * (data.rooms[i].room_area * data.rooms[i].active_area / 100);
+                const heat_loss     = result.q_loss[i];
+                const isSufficient  = supplied_heat >= heat_loss;
 
-                    if (t_surf > limit) {
-                        en1264Tag    = `<span style="color:white; background:#d81b60; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">⚠️ EN 1264 İHLALİ (> ${limit}°C)</span>`;
-                        t_surf_color = "#d81b60";
-                    }
-                    
-                    let reValue = result.reynolds[i];
-                    let reText, reColor;
-                    if      (reValue < 2300) { reText = `Laminer   (Re:${reValue.toFixed(0)})`;  reColor = "#9e9e9e"; }
-                    else if (reValue < 4000) { reText = `Geçiş     (Re:${reValue.toFixed(0)})`;  reColor = "var(--warning)"; }
-                    else                     { reText = `Türbülans (Re:${reValue.toFixed(0)})`;  reColor = "var(--success)"; }
+                const statusTag = isSufficient
+                    ? `<span style="color:white; background:var(--success); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;"> ${t('tag_sufficient', { cap: result.coverage_ratio[i].toFixed(0) })}</span>`
+                    : `<span style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">${t('tag_insufficient', { deficit: Math.abs(result.surplus_watt[i]).toFixed(0) })}</span>`;
 
-                    resContainer.innerHTML += `
-                        <div class="result-room-card" style="grid-template-columns: 1fr 1fr 1fr 1fr; ${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
-                        <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
-                            <span>📍 ${roomNames[i]} ${statusTag}${criticalTag}${multiZoneTag}${en1264Tag}</span>
-                            <span style="font-size:11px; color:#666;">
-                                Kayıp: <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> |
-                                Sistem: <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
-                            </span>
-                        </div>
-                        <div class="res-item ${!isSufficient ? 'res-danger' : 'res-success'}">
-                            <span>Yeterlilik</span>
-                            <strong>${isSufficient ? '✅ YETERLİ' : '❌ YETERSİZ'}</strong>
-                            <small>${isSufficient ? 'Kap: %' + result.coverage_ratio[i].toFixed(0) : 'Açık: ' + Math.abs(result.surplus_watt[i]).toFixed(0) + ' W'}</small>
-                        </div>
-                        <div class="res-item ${result.num_zones[i] > 1 ? 'res-info' : ''}">
-                            <span>Zonlama</span>
-                            <strong>${result.num_zones[i] > 1 ? result.num_zones[i] + ' Hat' : 'Tek Hat'}</strong>
-                            <small>${result.len_per_zone[i].toFixed(0)}m/hat</small>
-                        </div>
-                        <div class="res-item ${t_surf > limit ? 'res-danger' : ''}">
-                            <span>EN 1264</span>
-                            <strong style="color:${t_surf > limit ? '#d81b60' : 'var(--success)'};">${t_surf > limit ? '⚠️ İHLAL' : '✅ UYGUN'}</strong>
-                            <small>Max ${limit}°C</small>
-                        </div>
-                        <div class="res-item">
-                            <span>Çiğlenme</span>
-                            <strong style="color:${t_surf <= t_dew ? 'var(--danger)' : 'var(--success)'};">
-                                ${t_surf <= t_dew ? 'YOĞUŞMA RİSKİ' : 'GÜVENLİ'}
-                            </strong>
-                            <small>Nkt: ${t_dew.toFixed(1)}°C${t_surf <= t_dew ? '- T_surf=' + t_surf.toFixed(1) + '°C' : ''} </small>
-                        </div>
-                        <div class="res-item"><span>Isı Akısı</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
-                        <div class="res-item" style="background:#e1f5fe;"><span>Debimetre</span><strong style="color:var(--info);">${result.flow_lpm[i].toFixed(1)} L/min</strong></div>
-                        <div class="res-item"><span>Devre Direnci</span><strong style="color:${isCritical ? 'var(--warning)' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
-                        <div class="res-item"><span>Kanat Verimi</span><strong style="color:#673ab7;">% ${(result.fin_eff[i]*100).toFixed(1)}</strong></div>
-                        <div class="res-item" style="background:#f3e5f5;"><span>Radyant Oran</span><strong style="color:var(--academic);">% ${result.rad_ratio[i].toFixed(1)}</strong></div>
-                        <div class="res-item" style="background:#f3e5f5;"><span>Akış Rejimi</span><strong style="color:${reColor};">${reText}</strong></div>
-                        <div class="res-item" style="background:#f3e5f5;"><span>Yüzey Sıc.</span><strong style="color:${t_surf_color};">${t_surf.toFixed(1)} °C</strong></div>
-                        <div class="res-item"><span>Aşağı Kaçan</span><strong style="color:var(--danger);">${result.q_down[i].toFixed(1)} W/m²</strong></div>
-                        <div class="res-item eco-item"><span>Yıllık Enerji</span><strong style="color:var(--eco);">${result.room_energy[i].toFixed(0)} kWh</strong></div>
-                        <div class="res-item eco-item"><span>Karbon</span><strong style="color:var(--eco);">${result.room_co2[i].toFixed(0)} kg CO₂</strong></div>
-                        <div class="res-item" style="background:#f3e5f5;">
-                            <span>Bina Ekserji</span>
-                            <strong style="color:var(--academic);">${result.e_bina[i].toFixed(3)}</strong>
-                            <small style="color:#999;">e_bina</small>
-                        </div>
-                        <div class="res-item" style="background:#f3e5f5;">
-                            <span>ψ_R (Oda)</span>
-                            <strong style="color:var(--academic);">${result.psi_r[i].toFixed(3)}</strong>
-                            <small style="color:#999;">Ekserji Ver.</small>
-                        </div>
+                const isCritical  = (i === maxDropIdx);
+                const criticalTag = isCritical ? `<span style="color:white; background:var(--warning); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">${t('tag_critical')}</span>` : '';
+                const multiZoneTag = (result.num_zones[i] > 1) ? `<span style="color:white; background:var(--info); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">${t('tag_multizone', { n: result.num_zones[i] })}</span>` : '';
+
+                let t_surf       = result.t_surf[i];
+                let t_dew        = result.t_dew[i];
+                let limit        = en1264Limits[i];
+                let en1264Tag    = "";
+                let t_surf_color = "var(--primary)";
+
+                if (t_surf > limit) {
+                    en1264Tag    = `<span style="color:white; background:#d81b60; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:10px;">${t('tag_en_violation', { limit })}</span>`;
+                    t_surf_color = "#d81b60";
+                }
+
+                let reValue = result.reynolds[i];
+                let reText, reColor;
+                if      (reValue < 2300) { reText = t('regime_laminar',      { re: reValue.toFixed(0) }); reColor = "#9e9e9e"; }
+                else if (reValue < 4000) { reText = t('regime_transitional', { re: reValue.toFixed(0) }); reColor = "var(--warning)"; }
+                else                     { reText = t('regime_turbulent',    { re: reValue.toFixed(0) }); reColor = "var(--success)"; }
+
+                resContainer.innerHTML += `
+                    <div class="result-room-card" style="grid-template-columns: 1fr 1fr 1fr 1fr; ${(!isSufficient || t_surf > limit || t_surf <= t_dew) ? 'border: 2px solid var(--danger); background:#ffebee;' : ''}">
+                    <div style="grid-column: span 4; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px; color:#0056b3; display:flex; justify-content:space-between; align-items:center;">
+                        <span>📍 ${roomNames[i]} ${statusTag}${criticalTag}${multiZoneTag}${en1264Tag}</span>
+                        <span style="font-size:11px; color:#666;">
+                            ${t('hdr_loss')} <strong style="color:var(--danger)">${heat_loss.toFixed(0)} W</strong> |
+                            ${t('hdr_system')} <strong style="color:var(--success)">${supplied_heat.toFixed(0)} W</strong>
+                        </span>
+                    </div>
+                    <div class="res-item ${!isSufficient ? 'res-danger' : 'res-success'}">
+                        <span>${t('ri_sufficiency')}</span>
+                        <strong>${isSufficient ? t('ri_sufficient_short') : t('ri_insufficient_short')}</strong>
+                        <small>${isSufficient ? t('ri_cap', { cap: result.coverage_ratio[i].toFixed(0) }) : t('ri_deficit', { deficit: Math.abs(result.surplus_watt[i]).toFixed(0) })}</small>
+                    </div>
+                    <div class="res-item ${result.num_zones[i] > 1 ? 'res-info' : ''}">
+                        <span>${t('ri_zoning')}</span>
+                        <strong>${result.num_zones[i] > 1 ? t('ri_loops', { n: result.num_zones[i] }) : t('ri_single_loop')}</strong>
+                        <small>${t('ri_per_loop', { len: result.len_per_zone[i].toFixed(0) })}</small>
+                    </div>
+                    <div class="res-item ${t_surf > limit ? 'res-danger' : ''}">
+                        <span>${t('ri_en1264')}</span>
+                        <strong style="color:${t_surf > limit ? '#d81b60' : 'var(--success)'};">${t_surf > limit ? t('ri_violation') : t('ri_ok')}</strong>
+                        <small>${t('ri_max', { limit })}</small>
+                    </div>
+                    <div class="res-item">
+                        <span>${t('ri_dew')}</span>
+                        <strong style="color:${t_surf <= t_dew ? 'var(--danger)' : 'var(--success)'};">
+                            ${t_surf <= t_dew ? t('ri_cond_risk') : t('ri_safe')}
+                        </strong>
+                        <small>${t('ri_dew_pt', { dew: t_dew.toFixed(1) })}${t_surf <= t_dew ? '- T_surf=' + t_surf.toFixed(1) + '°C' : ''} </small>
+                    </div>
+                    <div class="res-item"><span>${t('ri_heat_flux')}</span><strong>${result.q_flux[i].toFixed(1)} W/m²</strong></div>
+                    <div class="res-item" style="background:#e1f5fe;"><span>${t('ri_flow_meter')}</span><strong style="color:var(--info);">${result.flow_lpm[i].toFixed(1)} L/min</strong></div>
+                    <div class="res-item"><span>${t('ri_circuit_dp')}</span><strong style="color:${isCritical ? 'var(--warning)' : '#e65100'};">${result.p_drop[i].toFixed(2)} kPa</strong></div>
+                    <div class="res-item"><span>${t('ri_fin_eff')}</span><strong style="color:#673ab7;">% ${(result.fin_eff[i]*100).toFixed(1)}</strong></div>
+                    <div class="res-item" style="background:#f3e5f5;"><span>${t('ri_radiant')}</span><strong style="color:var(--academic);">% ${result.rad_ratio[i].toFixed(1)}</strong></div>
+                    <div class="res-item" style="background:#f3e5f5;"><span>${t('ri_flow_regime')}</span><strong style="color:${reColor};">${reText}</strong></div>
+                    <div class="res-item" style="background:#f3e5f5;"><span>${t('ri_surface_temp')}</span><strong style="color:${t_surf_color};">${t_surf.toFixed(1)} °C</strong></div>
+                    <div class="res-item"><span>${t('ri_downward')}</span><strong style="color:var(--danger);">${result.q_down[i].toFixed(1)} W/m²</strong></div>
+                    <div class="res-item eco-item"><span>${t('ri_annual_energy')}</span><strong style="color:var(--eco);">${result.room_energy[i].toFixed(0)} kWh</strong></div>
+                    <div class="res-item eco-item"><span>${t('ri_carbon')}</span><strong style="color:var(--eco);">${result.room_co2[i].toFixed(0)} kg CO₂</strong></div>
+                    <div class="res-item" style="background:#f3e5f5;">
+                        <span>${t('ri_building_exergy')}</span>
+                        <strong style="color:var(--academic);">${result.e_building[i].toFixed(3)}</strong>
+                        <small style="color:#999;">e_building</small>
+                    </div>
+                    <div class="res-item" style="background:#f3e5f5;">
+                        <span>${t('ri_psi_room')}</span>
+                        <strong style="color:var(--academic);">${result.psi_r[i].toFixed(3)}</strong>
+                        <small style="color:#999;">${t('ri_exergy_eff')}</small>
+                    </div>
                     <div style="grid-column: span 4; margin-top: 8px;">
-                            <button onclick="toggleCharts('charts_${i}')" style="background:none; border:1px solid #c5cae9; color:#3949ab; border-radius:4px; padding:5px 12px; cursor:pointer; font-size:11px; font-weight:600; width:100%;">
-                                📊 Termal Grafikler ▼
-                            </button>
-                            <div id="charts_${i}" style="display:none; margin-top:10px;">
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
-                                    <div>
-                                        <canvas id="grad_${i}" style="display:block; width:100%; border-radius:8px; border:1px solid #dde3f0;"></canvas>
-                                    </div>
-                                    <div>
-                                        <canvas id="wave_${i}" style="display:block; width:100%; border-radius:8px; border:1px solid #dde3f0;"></canvas>
-                                    </div>
+                        <button onclick="toggleCharts('charts_${i}')" style="background:none; border:1px solid #c5cae9; color:#3949ab; border-radius:4px; padding:5px 12px; cursor:pointer; font-size:11px; font-weight:600; width:100%;">
+                            ${t('btn_charts')}
+                        </button>
+                        <div id="charts_${i}" style="display:none; margin-top:10px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                                <div>
+                                    <canvas id="grad_${i}" style="display:block; width:100%; border-radius:8px; border:1px solid #dde3f0;"></canvas>
+                                </div>
+                                <div>
+                                    <canvas id="wave_${i}" style="display:block; width:100%; border-radius:8px; border:1px solid #dde3f0;"></canvas>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    `;
-                }
-            } catch (error) {
-                alert("Bağlantı hatası! Python sunucusu açık mı kontrol edin.\n\n" + error);
+                </div>
+                `;
             }
         }
     </script>
